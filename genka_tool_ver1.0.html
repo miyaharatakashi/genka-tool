@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>原価率管理ツール</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F7F5F0;--surface:#fff;--surface2:#F0EDE8;--border:#E0DDD8;--text:#1A1816;--text2:#6B6560;--text3:#9B9590;--accent:#2D6A4F;--accent-light:#E8F5EE;--warn:#B45309;--warn-light:#FEF3C7;--danger:#991B1B;--danger-light:#FEE2E2;--info:#1D4ED8;--info-light:#EFF6FF;--mono:'DM Mono',monospace;--sans:'Noto Sans JP',sans-serif;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;}
+.app{display:grid;grid-template-columns:240px 1fr;min-height:100vh;}
+@media(max-width:700px){.app{grid-template-columns:1fr;}.sidebar{display:none;}}
+.sidebar{background:var(--text);color:#fff;padding:28px 20px;display:flex;flex-direction:column;gap:6px;position:sticky;top:0;height:100vh;overflow-y:auto;}
+.sidebar-logo{font-size:13px;font-weight:700;letter-spacing:.12em;opacity:.9;margin-bottom:20px;text-transform:uppercase;}
+.nav-item{padding:9px 14px;border-radius:8px;cursor:pointer;font-size:13px;color:rgba(255,255,255,.65);transition:all .15s;display:flex;align-items:center;gap:9px;}
+.nav-item:hover{background:rgba(255,255,255,.08);color:#fff;}
+.nav-item.active{background:rgba(255,255,255,.15);color:#fff;}
+.nav-icon{font-size:15px;width:18px;text-align:center;}
+.sidebar-divider{height:1px;background:rgba(255,255,255,.1);margin:10px 0;}
+.nav-badge{margin-left:auto;background:var(--danger);color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:100px;}
+.sync-status{margin-top:auto;font-size:11px;color:rgba(255,255,255,.4);padding:8px 14px;display:flex;align-items:center;gap:6px;}
+.sync-dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.3);}
+.sync-dot.ok{background:#4ADE80;}.sync-dot.err{background:#F87171;}.sync-dot.loading{background:#FCD34D;animation:pulse 1s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.main{padding:32px 28px;overflow-y:auto;}
+@media(max-width:700px){.main{padding:20px 16px;}}
+.page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:28px;gap:12px;flex-wrap:wrap;}
+.page-title{font-size:22px;font-weight:700;}.page-sub{font-size:13px;color:var(--text2);margin-top:3px;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px;}
+.card-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text2);margin-bottom:16px;}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;}
+@media(max-width:500px){.metrics{grid-template-columns:1fr 1fr;}}
+.metric{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;}
+.metric-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;}
+.metric-value{font-family:var(--mono);font-size:24px;font-weight:500;}
+.metric-value.good{color:var(--accent)}.metric-value.warn{color:var(--warn)}.metric-value.bad{color:var(--danger)}
+.form-label{font-size:12px;color:var(--text2);margin-bottom:5px;font-weight:500;}
+input[type=text],input[type=number],select,input[type=month],input[type=url]{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-family:var(--sans);font-size:14px;background:var(--surface);color:var(--text);outline:none;}
+input:focus,select:focus{border-color:var(--accent);}
+/* ingredient rows - テスト3と同じシンプルな構造 */
+.ing-header{display:grid;grid-template-columns:20px 1fr 80px 70px 90px 70px 32px;gap:8px;margin-bottom:6px;}
+.ingredient-row{display:grid;grid-template-columns:20px 1fr 80px 70px 90px 70px 32px;gap:8px;margin-bottom:6px;align-items:center;}
+.ingredient-row.dragging{opacity:.4;}
+.ingredient-row.drag-over{border-top:2px solid var(--accent);}
+.drag-handle{cursor:grab;color:var(--text3);font-size:16px;text-align:center;user-select:none;line-height:1;}
+.drag-handle:active{cursor:grabbing;}
+.ing-cost-cell{font-family:var(--mono);font-size:13px;color:var(--text2);text-align:right;padding:4px;white-space:nowrap;}
+.ing-from-master{border-color:var(--accent)!important;background:var(--accent-light)!important;}
+/* autocomplete */
+.ac-dropdown{position:fixed;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:9000;max-height:200px;overflow-y:auto;display:none;}
+.ac-item{padding:9px 12px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:13px;border-bottom:1px solid var(--border);}
+.ac-item:last-child{border-bottom:none;}.ac-item:hover{background:var(--surface2);}
+.ac-price{font-family:var(--mono);font-size:12px;color:var(--text2);}
+.ac-unit{font-size:11px;color:var(--text3);margin-left:4px;}
+/* misc */
+.del-btn{width:32px;height:32px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer;font-size:16px;color:var(--text2);}
+.del-btn:hover{background:var(--danger-light);border-color:var(--danger);color:var(--danger);}
+.btn{padding:9px 18px;border-radius:8px;font-family:var(--sans);font-size:13px;font-weight:700;cursor:pointer;border:none;}
+.btn-primary{background:var(--text);color:#fff;}.btn-primary:hover{background:#333;}
+.btn-outline{background:none;border:1px solid var(--border);color:var(--text);}.btn-outline:hover{border-color:var(--text);}
+.btn-warn{background:var(--warn);color:#fff;}
+.btn-sm{padding:6px 12px;font-size:12px;}
+.btn-add{background:none;border:1px dashed var(--border);color:var(--text2);width:100%;padding:9px;border-radius:8px;cursor:pointer;font-family:var(--sans);font-size:13px;}
+.btn-add:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-light);}
+.rate-bar-wrap{margin:16px 0;}
+.rate-bar-bg{height:8px;background:var(--surface2);border-radius:4px;overflow:hidden;position:relative;}
+.rate-bar-fill{height:100%;border-radius:4px;}
+.rate-bar-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-top:4px;}
+.rate-target{position:absolute;left:35%;top:-3px;height:14px;width:1px;background:var(--accent);opacity:.5;}
+.badge{display:inline-block;padding:3px 10px;border-radius:100px;font-size:11px;font-weight:700;}
+.badge.good{background:var(--accent-light);color:var(--accent);}.badge.warn{background:var(--warn-light);color:var(--warn);}.badge.bad{background:var(--danger-light);color:var(--danger);}.badge.info{background:var(--info-light);color:var(--info);}
+.tip-box{border-radius:8px;padding:10px 14px;font-size:12px;margin-bottom:14px;display:flex;align-items:flex-start;gap:8px;}
+.tip-info{background:var(--info-light);border:1px solid #BFDBFE;color:var(--info);}
+.tip-warn{background:var(--warn-light);border:1px solid #FCD34D;color:var(--warn);}
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{text-align:left;padding:10px 12px;background:var(--surface2);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);border-bottom:1px solid var(--border);}
+td{padding:11px 12px;border-bottom:1px solid var(--border);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}tr:hover td{background:var(--surface2);}
+.action-btn{background:none;border:none;cursor:pointer;color:var(--text2);font-size:13px;padding:4px 6px;border-radius:5px;}
+.action-btn:hover{background:var(--surface2);color:var(--text);}
+.chart-bars{display:flex;align-items:flex-end;gap:8px;height:140px;padding:0 4px;}
+.chart-bar-group{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;}
+.chart-bar{width:100%;border-radius:4px 4px 0 0;min-height:2px;}
+.chart-bar-label{font-size:10px;color:var(--text3);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60px;}
+.chart-bar-val{font-size:11px;font-family:var(--mono);color:var(--text2);}
+.price-chart{position:relative;height:120px;margin:12px 0 4px;}
+.price-chart svg{width:100%;height:100%;}
+.master-form-grid{display:grid;grid-template-columns:1fr 120px 90px 120px auto;gap:8px;align-items:end;}
+@media(max-width:700px){.master-form-grid{grid-template-columns:1fr 1fr;}}
+.alert-card{border-left:4px solid var(--warn);background:var(--warn-light);border-radius:0 8px 8px 0;padding:12px 16px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;}
+.alert-card.danger{border-left-color:var(--danger);background:var(--danger-light);}
+.alert-name{font-weight:700;font-size:14px;}.alert-detail{font-size:12px;color:var(--text2);margin-top:2px;}
+.alert-pct{font-family:var(--mono);font-weight:700;font-size:18px;}
+.alert-pct.warn{color:var(--warn);}.alert-pct.danger{color:var(--danger);}
+.setup-step{display:flex;gap:16px;margin-bottom:28px;}
+.step-num{width:28px;height:28px;border-radius:50%;background:var(--text);color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;}
+.step-body{flex:1;}.step-title{font-weight:700;font-size:15px;margin-bottom:6px;}
+.step-desc{font-size:13px;color:var(--text2);line-height:1.7;}
+.empty{text-align:center;padding:48px 20px;color:var(--text3);}
+.empty-icon{font-size:36px;margin-bottom:12px;}.empty-text{font-size:14px;}
+.toast{position:fixed;bottom:24px;right:24px;background:var(--text);color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;opacity:0;transform:translateY(8px);pointer-events:none;z-index:9999;}
+.toast.show{opacity:1;transform:translateY(0);}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px;}
+.modal{background:var(--surface);border-radius:16px;padding:28px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;}
+.modal-title{font-size:18px;font-weight:700;margin-bottom:4px;}.modal-sub{font-size:13px;color:var(--text2);margin-bottom:20px;}
+.modal-close{float:right;background:none;border:none;font-size:20px;cursor:pointer;color:var(--text2);margin-top:-4px;}
+.history-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px;}
+.history-row:last-child{border-bottom:none;}
+.price-change{font-size:12px;font-family:var(--mono);}
+.price-change.up{color:var(--danger);}.price-change.down{color:var(--accent);}.price-change.same{color:var(--text3);}
+.loading-overlay{position:fixed;inset:0;background:rgba(247,245,240,.8);z-index:800;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;}
+.spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="sidebar">
+    <div class="sidebar-logo">🍽 原価管理</div>
+    <div class="nav-item" onclick="showTab('register')" data-tab="register"><span class="nav-icon">＋</span> メニュー登録</div>
+    <div class="nav-item" onclick="showTab('list')" data-tab="list"><span class="nav-icon">≡</span> メニュー一覧</div>
+    <div class="nav-item" onclick="showTab('master')" data-tab="master"><span class="nav-icon">◎</span> 食材マスタ</div>
+    <div class="nav-item" onclick="showTab('alerts')" data-tab="alerts"><span class="nav-icon">⚠</span> 値上がりアラート<span class="nav-badge" id="alert-nav-badge" style="display:none">0</span></div>
+    <div class="nav-item" onclick="showTab('report')" data-tab="report"><span class="nav-icon">↗</span> 月次レポート</div>
+    <div class="sidebar-divider"></div>
+    <div class="nav-item" onclick="showTab('settings')" data-tab="settings"><span class="nav-icon">⚙</span> 設定</div>
+    <div class="nav-item" onclick="exportCSV()"><span class="nav-icon">↓</span> CSVエクスポート</div>
+    <div class="sync-status"><div class="sync-dot" id="sync-dot"></div><span id="sync-label">未接続</span></div>
+  </div>
+  <div class="main">
+
+    <!-- SETTINGS -->
+    <div id="tab-settings">
+      <div class="page-header"><div><div class="page-title">設定</div><div class="page-sub">Google Apps ScriptのURLを登録してクラウド連携します</div></div></div>
+      <div class="card">
+        <div class="card-title">GAS URL設定</div>
+        <div style="margin-bottom:16px">
+          <div class="form-label">デプロイURL</div>
+          <div style="display:grid;grid-template-columns:1fr auto;gap:8px">
+            <input type="url" id="gas-url-input" placeholder="https://script.google.com/macros/s/...">
+            <button class="btn btn-primary" onclick="saveGasUrl()">接続する</button>
+          </div>
+        </div>
+        <div id="connection-status"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">設定手順</div>
+        <div class="setup-step"><div class="step-num">1</div><div class="step-body"><div class="step-title">Googleスプレッドシートを新規作成</div><div class="step-desc">Googleドライブで「新規」→「Googleスプレッドシート」を作成します。</div></div></div>
+        <div class="setup-step"><div class="step-num">2</div><div class="step-body"><div class="step-title">Apps Scriptを開く</div><div class="step-desc">「拡張機能」→「Apps Script」を開きます。</div></div></div>
+        <div class="setup-step"><div class="step-num">3</div><div class="step-body"><div class="step-title">gas_code.js の内容を貼り付ける</div><div class="step-desc">エディタのコードを削除し、配布した gas_code.js の内容を貼り付けて保存します。</div></div></div>
+        <div class="setup-step"><div class="step-num">4</div><div class="step-body"><div class="step-title">ウェブアプリとしてデプロイ</div><div class="step-desc">「デプロイ」→「新しいデプロイ」→「ウェブアプリ」を選択。実行ユーザー: 自分、アクセス: 全員。</div></div></div>
+        <div class="setup-step"><div class="step-num">5</div><div class="step-body"><div class="step-title">発行されたURLをここに貼り付ける</div><div class="step-desc">デプロイURLをコピーして上の入力欄に貼り付け「接続する」をクリックします。</div></div></div>
+      </div>
+    </div>
+
+    <!-- REGISTER -->
+    <div id="tab-register" style="display:none">
+      <div class="page-header"><div><div class="page-title">メニュー登録</div><div class="page-sub">食材を入力して原価率を計算・保存できます</div></div></div>
+      <div class="card">
+        <div class="card-title">基本情報</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div><div class="form-label">メニュー名</div><input type="text" id="menu-name" placeholder="例：マルゲリータピザ"></div>
+          <div><div class="form-label">カテゴリ</div><select id="menu-cat"><option>フード</option><option>ドリンク</option><option>デザート</option><option>その他</option></select></div>
+          <div><div class="form-label">販売価格（円・税抜）</div><input type="number" id="menu-price" placeholder="1200" oninput="calcTotal()"></div>
+          <div><div class="form-label">対象月</div><input type="month" id="menu-month"></div>
+          <div style="grid-column:1/-1"><div class="form-label">メモ</div><textarea id="menu-memo" placeholder="備考・メモなど" rows="2" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-family:var(--sans);font-size:14px;background:var(--surface);color:var(--text);outline:none;resize:vertical;"></textarea></div>
+        </div>
+      </div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div class="card-title" style="margin-bottom:0">食材内訳</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span id="master-badge" class="badge info" style="display:none"></span>
+            <button class="btn btn-outline btn-sm" onclick="document.getElementById('csv-import-input').click()">CSVインポート</button>
+            <input type="file" id="csv-import-input" accept=".csv" style="display:none" onchange="importCSV(this)">
+          </div>
+        </div>
+        <div id="master-tip" class="tip-box tip-info" style="display:none"><span>💡</span><span>食材名を入力すると食材マスタから自動補完されます</span></div>
+        <div style="margin-bottom:12px">
+          <label class="btn btn-outline btn-sm" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+            <span>📂 CSVインポート</span>
+            <input type="file" id="csv-import" accept=".csv" style="display:none" onchange="importCSV(this)">
+          </label>
+          <span style="font-size:12px;color:var(--text3);margin-left:8px">形式: 食材名, 使用量, 単位, 単価</span>
+        </div>
+        <div class="ing-header">
+          <div></div>
+          <div class="form-label">食材名</div>
+          <div class="form-label">使用量</div>
+          <div class="form-label">単位</div>
+          <div class="form-label">単価（円）</div>
+          <div class="form-label" style="text-align:right">原価（円）</div>
+          <div></div>
+        </div>
+        <div id="ing-list"></div>
+        <button class="btn-add" onclick="addIngRow()">＋ 食材を追加</button>
+      </div>
+      <div class="metrics">
+        <div class="metric"><div class="metric-label">食材合計</div><div class="metric-value" id="m-cost">—</div></div>
+        <div class="metric"><div class="metric-label">原価率</div><div class="metric-value" id="m-rate">—</div></div>
+        <div class="metric"><div class="metric-label">粗利</div><div class="metric-value" id="m-profit">—</div></div>
+      </div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span style="font-size:14px;font-weight:700">原価率チェック</span>
+          <span class="badge" id="rate-badge">—</span>
+        </div>
+        <div class="rate-bar-wrap">
+          <div class="rate-bar-bg"><div class="rate-bar-fill" id="rate-bar" style="width:0%;background:var(--accent)"></div><div class="rate-target"></div></div>
+          <div class="rate-bar-labels"><span>0%</span><span style="color:var(--accent)">目標 30–35%</span><span>100%</span></div>
+        </div>
+        <div style="font-size:12px;color:var(--text2)" id="rate-comment">販売価格と食材を入力してください</div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn btn-outline" onclick="clearForm()">クリア</button>
+        <button class="btn btn-primary" onclick="saveMenu()">保存する</button>
+      </div>
+    </div>
+
+    <!-- LIST -->
+    <div id="tab-list" style="display:none">
+      <div class="page-header">
+        <div><div class="page-title">メニュー一覧</div><div class="page-sub" id="list-count">0件</div></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-outline btn-sm" onclick="loadAll()">🔄 更新</button>
+          <button class="btn btn-outline btn-sm" onclick="exportCSV()">CSVエクスポート</button>
+          <button class="btn btn-primary btn-sm" onclick="showTab('register')" data-tab="register">＋ 新規登録</button>
+        </div>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <div class="table-wrap"><table><thead><tr><th>メニュー名</th><th>カテゴリ</th><th>販売価格</th><th>食材原価</th><th>原価率</th><th>粗利</th><th>対象月</th><th>メモ</th><th></th></tr></thead><tbody id="menu-tbody"></tbody></table></div>
+        <div class="empty" id="list-empty"><div class="empty-icon">📋</div><div class="empty-text">まだメニューが登録されていません</div></div>
+      </div>
+    </div>
+
+    <!-- MASTER -->
+    <div id="tab-master" style="display:none">
+      <div class="page-header"><div><div class="page-title">食材マスタ</div><div class="page-sub">登録した食材はメニュー登録時に自動補完されます</div></div></div>
+      <div class="card">
+        <div class="card-title">食材を追加</div>
+        <div class="master-form-grid">
+          <div><div class="form-label">食材名</div><input type="text" id="m-name" placeholder="例：モッツァレラ"></div>
+          <div><div class="form-label">単価（円）</div><input type="number" id="m-price" placeholder="120"></div>
+          <div><div class="form-label">単位</div><select id="m-unit"><option>g</option><option>ml</option><option>個</option><option>枚</option><option>本</option><option>袋</option><option>パック</option></select></div>
+          <div><div class="form-label">カテゴリ</div><select id="m-cat"><option>肉・魚</option><option>野菜</option><option>乳製品</option><option>調味料</option><option>穀物・粉</option><option>ドリンク</option><option>その他</option></select></div>
+          <div><button class="btn btn-primary" onclick="saveMaster()" style="white-space:nowrap;width:100%">追加</button></div>
+        </div>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:13px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em">登録済み食材</span>
+          <span id="master-total" style="font-size:12px;color:var(--text3)">0件</span>
+        </div>
+        <div class="table-wrap"><table><thead><tr><th>食材名</th><th>現在単価</th><th>単位</th><th>カテゴリ</th><th>前回比</th><th>使用状況</th><th></th></tr></thead><tbody id="master-tbody"></tbody></table></div>
+        <div class="empty" id="master-empty"><div class="empty-icon">🥦</div><div class="empty-text">まだ食材が登録されていません</div></div>
+      </div>
+    </div>
+
+    <!-- ALERTS -->
+    <div id="tab-alerts" style="display:none">
+      <div class="page-header">
+        <div><div class="page-title">値上がりアラート</div><div class="page-sub">前回比5%以上値上がりした食材を表示します</div></div>
+        <button class="btn btn-warn btn-sm" onclick="recalcAllMenus()">全メニュー原価率を再計算</button>
+      </div>
+      <div id="alert-notice" style="display:none" class="tip-box tip-warn"><span>⚠</span><span id="alert-notice-text"></span></div>
+      <div id="alerts-list"></div>
+      <div class="empty" id="alerts-empty"><div class="empty-icon">✅</div><div class="empty-text">値上がりしている食材はありません</div></div>
+    </div>
+
+    <!-- REPORT -->
+    <div id="tab-report" style="display:none">
+      <div class="page-header"><div><div class="page-title">月次レポート</div><div class="page-sub">メニュー別の原価率分析</div></div></div>
+      <div class="metrics">
+        <div class="metric"><div class="metric-label">登録メニュー数</div><div class="metric-value" id="r-count">0</div></div>
+        <div class="metric"><div class="metric-label">平均原価率</div><div class="metric-value" id="r-avg">—</div></div>
+        <div class="metric"><div class="metric-label">要改善メニュー</div><div class="metric-value bad" id="r-warn">0</div></div>
+      </div>
+      <div class="card"><div class="card-title">メニュー別原価率</div><div class="chart-bars" id="chart-bars"><div class="empty" style="width:100%"><div class="empty-icon">📊</div><div class="empty-text">データがありません</div></div></div></div>
+      <div class="card"><div class="card-title">カテゴリ別サマリ</div><div id="cat-summary"><div class="empty"><div class="empty-text">データがありません</div></div></div></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Price History Modal -->
+<div class="modal-bg" id="history-modal" style="display:none" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">×</button>
+    <div class="modal-title" id="modal-title">価格履歴</div>
+    <div class="modal-sub" id="modal-sub"></div>
+    <div style="display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:20px;align-items:end">
+      <div><div class="form-label">新しい単価（円）</div><input type="number" id="modal-new-price" placeholder="新単価を入力"></div>
+      <button class="btn btn-warn" onclick="updatePriceFromModal()">単価を更新</button>
+    </div>
+    <div class="card-title">価格推移グラフ</div>
+    <div class="price-chart" id="modal-chart"></div>
+    <div class="card-title" style="margin-top:16px">変更履歴</div>
+    <div id="modal-history-list"></div>
+  </div>
+</div>
+
+<!-- Autocomplete dropdown (body直下・DOM干渉なし) -->
+<div class="ac-dropdown" id="ac-dropdown"></div>
+
+<div class="loading-overlay" id="loading" style="display:none">
+  <div class="spinner"></div>
+  <div style="font-size:13px;color:var(--text2)" id="loading-msg">処理中...</div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ── State ──────────────────────────────
+let menus  = JSON.parse(localStorage.getItem('genka_menus')  || '[]');
+let master = JSON.parse(localStorage.getItem('genka_master') || '[]');
+let editId = null;
+let modalIngId = null;
+let GAS_URL = localStorage.getItem('genka_gas_url') || '';
+let dragRow = null;
+let acTargetRow = null;
+const ALERT_THRESHOLD = 5;
+
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function fmt(n){return parseFloat(n).toLocaleString('ja-JP',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function fmtPct(n){return parseFloat(n).toFixed(2)+'%';}
+
+// ── Init ────────────────────────────────
+window.onload = async () => {
+  document.getElementById('menu-month').value = new Date().toISOString().slice(0,7);
+  if(GAS_URL){
+    document.getElementById('gas-url-input').value = GAS_URL;
+    showTab('register');
+    initIngRows();
+    await loadAll();
+  } else {
+    showTab('settings');
+    initIngRows();
+  }
+  refreshMasterUI(); updateAlertBadge();
+};
+
+// ACを閉じる（inputクリック以外）
+document.addEventListener('click', e => {
+  const ac = document.getElementById('ac-dropdown');
+  if(e.target !== ac && !ac.contains(e.target) && !e.target.classList.contains('ing-name')){
+    ac.style.display = 'none';
+  }
+});
+
+// ── Tabs ────────────────────────────────
+const TABS = ['settings','register','list','master','alerts','report'];
+function showTab(t){
+  TABS.forEach(x => document.getElementById('tab-'+x).style.display = x===t?'':'none');
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.classList.remove('active');
+    if(el.dataset.tab === t) el.classList.add('active');
+  });
+  if(t==='list')   renderList();
+  if(t==='report') renderReport();
+  if(t==='master') renderMaster();
+  if(t==='alerts') renderAlerts();
+}
+
+// ── Ingredient rows (テスト3と同じ設計) ──
+function initIngRows(ings){
+  const list = document.getElementById('ing-list');
+  list.innerHTML = '';
+  if(ings && ings.length > 0){
+    ings.forEach(i => addIngRow(i.name, i.price, i.unit||'', i.amount, i.fromMaster));
+  } else {
+    addIngRow(); addIngRow(); addIngRow();
+  }
+}
+
+function addIngRow(name='', price='', unit='', amount='', fromMaster=false){
+  const list = document.getElementById('ing-list');
+  const row = document.createElement('div');
+  row.className = 'ingredient-row';
+
+  // ハンドル
+  const handle = document.createElement('div');
+  handle.className = 'drag-handle';
+  handle.draggable = true;
+  handle.textContent = '⠿';
+
+  // 食材名
+  const inpName = document.createElement('input');
+  inpName.type = 'text';
+  inpName.className = 'ing-name';
+  inpName.placeholder = '食材名（入力で候補表示）';
+  inpName.value = name;
+  if(fromMaster) inpName.classList.add('ing-from-master');
+
+  // 単価
+  const inpPrice = document.createElement('input');
+  inpPrice.type = 'text';
+  inpPrice.className = 'ing-price';
+  inpPrice.placeholder = '例:120.50';
+  inpPrice.value = price;
+
+  // 単位
+  const inpUnit = document.createElement('input');
+  inpUnit.type = 'text';
+  inpUnit.className = 'ing-unit';
+  inpUnit.placeholder = 'g/ml/個';
+  inpUnit.value = unit;
+
+  // 使用量
+  const inpAmount = document.createElement('input');
+  inpAmount.type = 'text';
+  inpAmount.className = 'ing-amount';
+  inpAmount.placeholder = '0.00';
+  inpAmount.value = amount;
+
+  // 原価セル
+  const costCell = document.createElement('div');
+  costCell.className = 'ing-cost-cell';
+  costCell.textContent = '—';
+
+  // 削除ボタン
+  const delBtn = document.createElement('button');
+  delBtn.type = 'button';
+  delBtn.className = 'del-btn';
+  delBtn.textContent = '×';
+
+  row.appendChild(handle);
+  row.appendChild(inpName);
+  row.appendChild(inpAmount);
+  row.appendChild(inpUnit);
+  row.appendChild(inpPrice);
+  row.appendChild(costCell);
+  row.appendChild(delBtn);
+  list.appendChild(row);
+
+  // 原価更新
+  function updateCost(){
+    const p = parseFloat(inpPrice.value)||0;
+    const a = parseFloat(inpAmount.value)||0;
+    costCell.textContent = (p&&a) ? fmt(p*a)+'円' : '—';
+    calcTotal();
+  }
+  inpPrice.addEventListener('input', updateCost);
+  inpAmount.addEventListener('input', updateCost);
+
+  // 初期値がある場合は原価を表示
+  if(price && amount) updateCost();
+
+  // 食材名autocomplete
+  inpName.addEventListener('input', () => showAC(inpName, row));
+
+  // 削除
+  delBtn.addEventListener('click', () => { row.remove(); calcTotal(); });
+
+  // DnD（ハンドルのみ）
+  handle.addEventListener('dragstart', e => {
+    dragRow = row;
+    row.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+  });
+  handle.addEventListener('dragend', () => {
+    dragRow = null;
+    document.querySelectorAll('.ingredient-row').forEach(r => {
+      r.classList.remove('dragging', 'drag-over');
+    });
+  });
+  row.addEventListener('dragover', e => {
+    if(!dragRow || dragRow === row) return;
+    e.preventDefault();
+    document.querySelectorAll('.ingredient-row').forEach(r => r.classList.remove('drag-over'));
+    row.classList.add('drag-over');
+  });
+  row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+  row.addEventListener('drop', e => {
+    e.preventDefault();
+    if(dragRow && dragRow !== row){
+      const list = document.getElementById('ing-list');
+      const rows = [...list.querySelectorAll('.ingredient-row')];
+      if(rows.indexOf(dragRow) < rows.indexOf(row)) row.after(dragRow);
+      else row.before(dragRow);
+    }
+    row.classList.remove('drag-over');
+  });
+}
+
+// ── Autocomplete ────────────────────────
+function showAC(input, row){
+  const ac = document.getElementById('ac-dropdown');
+  const q = input.value.trim().toLowerCase();
+  if(!q){ ac.style.display='none'; return; }
+  const hits = master.filter(m => m.name.toLowerCase().includes(q)).slice(0,8);
+  if(!hits.length){ ac.style.display='none'; return; }
+  acTargetRow = row;
+  const rect = input.getBoundingClientRect();
+  ac.style.top    = (rect.bottom + window.scrollY)+'px';
+  ac.style.left   = rect.left+'px';
+  ac.style.width  = rect.width+'px';
+  ac.innerHTML = hits.map(m =>
+    `<div class="ac-item" data-name="${esc(m.name)}" data-price="${curPrice(m)}" data-unit="${m.unit}">
+      <span>${esc(m.name)}<span class="ac-unit">${m.unit}</span></span>
+      <span class="ac-price">${fmt(curPrice(m))}円/${m.unit}</span>
+    </div>`
+  ).join('');
+  ac.style.display = '';
+  ac.querySelectorAll('.ac-item').forEach(item => {
+    item.addEventListener('mousedown', e => {
+      e.preventDefault();
+      const r = acTargetRow;
+      r.querySelector('.ing-name').value  = item.dataset.name;
+      r.querySelector('.ing-name').classList.add('ing-from-master');
+      r.querySelector('.ing-price').value = item.dataset.price;
+      r.querySelector('.ing-unit').value  = item.dataset.unit;
+      const p = parseFloat(item.dataset.price)||0;
+      const a = parseFloat(r.querySelector('.ing-amount').value)||0;
+      r.querySelector('.ing-cost-cell').textContent = (p&&a) ? fmt(p*a)+'円' : '—';
+      ac.style.display = 'none';
+      calcTotal();
+      toast(`「${item.dataset.name}」を選択（${fmt(parseFloat(item.dataset.price))}円/${item.dataset.unit}）`);
+    });
+  });
+}
+
+// ── Calc ────────────────────────────────
+function calcTotal(){
+  const price = parseFloat(document.getElementById('menu-price').value)||0;
+  let cost = 0;
+  document.querySelectorAll('#ing-list .ingredient-row').forEach(row => {
+    const p = parseFloat(row.querySelector('.ing-price').value)||0;
+    const a = parseFloat(row.querySelector('.ing-amount').value)||0;
+    cost += p * a;
+  });
+  cost = Math.round(cost * 100) / 100;
+  const rate = price > 0 ? cost/price*100 : 0;
+
+  document.getElementById('m-cost').textContent   = fmt(cost)+'円';
+  document.getElementById('m-profit').textContent = price ? fmt(price-cost)+'円' : '—';
+
+  const rEl  = document.getElementById('m-rate');
+  const bar  = document.getElementById('rate-bar');
+  const badge= document.getElementById('rate-badge');
+  const cmt  = document.getElementById('rate-comment');
+
+  if(price > 0){
+    rEl.textContent = fmtPct(rate);
+    bar.style.width = Math.min(rate,100)+'%';
+    let cls,lbl,msg,col;
+    if(rate<=30){cls='good';lbl='優良';msg='原価率が低めです。利益率が高い状態です。';col='var(--accent)';}
+    else if(rate<=35){cls='good';lbl='目標内';msg='飲食店の目標範囲（30〜35%）内です。';col='var(--accent)';}
+    else if(rate<=40){cls='warn';lbl='やや高め';msg='目標を超えています。食材の見直しを検討してください。';col='var(--warn)';}
+    else{cls='bad';lbl='要改善';msg='原価率が高すぎます。価格見直しまたは食材変更が必要です。';col='var(--danger)';}
+    rEl.className = 'metric-value '+cls;
+    bar.style.background = col;
+    badge.className = 'badge '+cls; badge.textContent = lbl;
+    cmt.textContent = msg;
+  } else {
+    rEl.textContent='—'; rEl.className='metric-value';
+    bar.style.width='0%'; badge.textContent='—'; badge.className='badge';
+    cmt.textContent='販売価格と食材を入力してください';
+  }
+}
+
+function getIngRows(){
+  return [...document.querySelectorAll('#ing-list .ingredient-row')].map(row => ({
+    name:       row.querySelector('.ing-name').value,
+    price:      row.querySelector('.ing-price').value,
+    unit:       row.querySelector('.ing-unit').value,
+    amount:     row.querySelector('.ing-amount').value,
+    fromMaster: row.querySelector('.ing-name').classList.contains('ing-from-master')
+  }));
+}
+
+// ── Menu CRUD ───────────────────────────
+function clearForm(){
+  document.getElementById('menu-name').value='';
+  document.getElementById('menu-price').value='';
+  document.getElementById('menu-memo').value='';
+  initIngRows(); calcTotal(); editId=null;
+}
+
+async function saveMenu(){
+  const name  = document.getElementById('menu-name').value.trim();
+  const price = parseFloat(document.getElementById('menu-price').value)||0;
+  const cat   = document.getElementById('menu-cat').value;
+  const month = document.getElementById('menu-month').value;
+  if(!name){toast('メニュー名を入力してください');return;}
+  if(!price){toast('販売価格を入力してください');return;}
+  const ings = getIngRows().filter(i => i.name && i.price);
+  let cost = 0;
+  ings.forEach(i => cost += (parseFloat(i.price)||0)*(parseFloat(i.amount)||0));
+  cost = Math.round(cost*100)/100;
+  const rate = Math.round(cost/price*10000)/100;
+  const memo = document.getElementById('menu-memo').value;
+  const menu = {id:editId||Date.now(),name,price,cat,month,memo,cost,rate,ings,savedAt:new Date().toISOString()};
+  showLoading('保存中...');
+  try{
+    await gasPost({action:'saveMenu',menu});
+    if(editId){menus=menus.map(m=>m.id===editId?menu:m);editId=null;}else menus.push(menu);
+    localStorage.setItem('genka_menus',JSON.stringify(menus));
+    setSyncStatus('ok'); toast('「'+name+'」を保存しました'); clearForm();
+  }catch(e){setSyncStatus('error');toast('保存エラー: '+e.message);}
+  finally{hideLoading();}
+}
+
+function renderList(){
+  const tb=document.getElementById('menu-tbody'),em=document.getElementById('list-empty');
+  document.getElementById('list-count').textContent='登録済みメニュー数: '+menus.length+'件';
+  if(!menus.length){tb.innerHTML='';em.style.display='';return;}
+  em.style.display='none';
+  tb.innerHTML=menus.map(m=>{
+    const cls=m.rate<=35?'good':m.rate<=40?'warn':'bad';
+    return `<tr>
+      <td style="font-weight:500">${esc(m.name)}</td><td>${m.cat}</td>
+      <td style="font-family:var(--mono)">${Number(m.price).toLocaleString()}円</td>
+      <td style="font-family:var(--mono)">${fmt(m.cost)}円</td>
+      <td><span class="badge ${cls}">${fmtPct(m.rate)}</span></td>
+      <td style="font-family:var(--mono)">${fmt(m.price-m.cost)}円</td>
+      <td style="color:var(--text3)">${m.month||'—'}</td>
+      <td style="color:var(--text2);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.memo||''}</td>
+      <td style="color:var(--text3);font-size:12px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.memo||'—'}</td>
+      <td style="white-space:nowrap">
+        <button class="action-btn" onclick="editMenu(${m.id})">✏</button>
+        <button class="action-btn" onclick="deleteMenu(${m.id})" style="color:var(--danger)">🗑</button>
+      </td></tr>`;
+  }).join('');
+}
+
+function editMenu(id){
+  const m=menus.find(x=>x.id===id);if(!m)return;
+  editId=id;
+  document.getElementById('menu-name').value=m.name;
+  document.getElementById('menu-price').value=m.price;
+  document.getElementById('menu-cat').value=m.cat;
+  document.getElementById('menu-month').value=m.month||'';
+  document.getElementById('menu-memo').value=m.memo||'';
+  initIngRows(m.ings||[]);
+  calcTotal(); showTab('register'); toast('編集モードで開きました');
+}
+
+async function deleteMenu(id){
+  if(!confirm('このメニューを削除しますか？'))return;
+  showLoading('削除中...');
+  try{
+    await gasPost({action:'deleteMenu',id});
+    menus=menus.filter(m=>m.id!==id);
+    localStorage.setItem('genka_menus',JSON.stringify(menus));
+    setSyncStatus('ok');renderList();toast('削除しました');
+  }catch(e){setSyncStatus('error');toast('削除エラー: '+e.message);}
+  finally{hideLoading();}
+}
+
+// ── Master ──────────────────────────────
+function curPrice(m){return m.priceHistory&&m.priceHistory.length?m.priceHistory[m.priceHistory.length-1].price:m.price;}
+function prevPrice(m){return m.priceHistory&&m.priceHistory.length>=2?m.priceHistory[m.priceHistory.length-2].price:null;}
+
+async function saveMaster(){
+  const name=document.getElementById('m-name').value.trim();
+  const price=parseFloat(document.getElementById('m-price').value)||0;
+  const unit=document.getElementById('m-unit').value;
+  const cat=document.getElementById('m-cat').value;
+  if(!name){toast('食材名を入力してください');return;}
+  if(!price){toast('単価を入力してください');return;}
+  if(master.find(m=>m.name===name)){toast('同名の食材がすでに登録されています');return;}
+  const today=new Date().toISOString().slice(0,10);
+  const item={id:Date.now(),name,price,unit,cat,priceHistory:[{date:today,price}]};
+  showLoading('保存中...');
+  try{
+    await gasPost({action:'saveMaster',item});
+    master.push(item);localStorage.setItem('genka_master',JSON.stringify(master));
+    document.getElementById('m-name').value='';document.getElementById('m-price').value='';
+    setSyncStatus('ok');renderMaster();refreshMasterUI();updateAlertBadge();
+    toast('「'+name+'」をマスタに追加しました');
+  }catch(e){setSyncStatus('error');toast('保存エラー: '+e.message);}
+  finally{hideLoading();}
+}
+
+function renderMaster(){
+  const tb=document.getElementById('master-tbody'),em=document.getElementById('master-empty');
+  document.getElementById('master-total').textContent=master.length+'件';
+  if(!master.length){tb.innerHTML='';em.style.display='';return;}
+  em.style.display='none';
+  tb.innerHTML=master.map(m=>{
+    const cur=curPrice(m),prev=prevPrice(m);
+    const used=menus.filter(mn=>mn.ings&&mn.ings.some(i=>i.name===m.name)).length;
+    let chg='<span style="color:var(--text3);font-size:12px">—</span>';
+    if(prev!==null){
+      const diff=cur-prev,pct=Math.round(diff/prev*100);
+      if(diff>0)chg=`<span class="badge bad">▲${pct}%(+${diff}円)</span>`;
+      else if(diff<0)chg=`<span class="badge good">▼${Math.abs(pct)}%(${diff}円)</span>`;
+      else chg=`<span style="color:var(--text3);font-size:12px">変動なし</span>`;
+    }
+    return `<tr>
+      <td style="font-weight:500">${esc(m.name)}</td>
+      <td style="font-family:var(--mono)">${Number(cur).toLocaleString()}円</td>
+      <td style="color:var(--text2)">${m.unit}</td>
+      <td><span class="badge info">${m.cat}</span></td>
+      <td>${chg}</td>
+      <td style="color:${used>0?'var(--accent)':'var(--text3)'}">${used>0?used+'品で使用中':'未使用'}</td>
+      <td style="white-space:nowrap">
+        <button class="action-btn" onclick="openHistoryModal(${m.id})">📈 履歴</button>
+        <button class="action-btn" onclick="deleteMaster(${m.id})" style="color:var(--danger)">🗑</button>
+      </td></tr>`;
+  }).join('');
+}
+
+async function deleteMaster(id){
+  const item=master.find(m=>m.id===id);if(!item)return;
+  if(!confirm(`「${item.name}」をマスタから削除しますか？`))return;
+  showLoading('削除中...');
+  try{
+    await gasPost({action:'deleteMaster',id});
+    master=master.filter(m=>m.id!==id);localStorage.setItem('genka_master',JSON.stringify(master));
+    setSyncStatus('ok');renderMaster();refreshMasterUI();updateAlertBadge();toast('削除しました');
+  }catch(e){setSyncStatus('error');toast('削除エラー: '+e.message);}
+  finally{hideLoading();}
+}
+
+function refreshMasterUI(){
+  const tip=document.getElementById('master-tip'),badge=document.getElementById('master-badge');
+  if(master.length>0){tip.style.display='flex';badge.style.display='';badge.textContent='食材マスタ '+master.length+'件';}
+  else{tip.style.display='none';badge.style.display='none';}
+}
+
+// ── Price History Modal ──────────────────
+function openHistoryModal(id){
+  const m=master.find(x=>x.id===id);if(!m)return;
+  modalIngId=id;
+  document.getElementById('modal-title').textContent=m.name+' — 価格履歴';
+  document.getElementById('modal-sub').textContent=`単位: ${m.unit} ／ カテゴリ: ${m.cat}`;
+  document.getElementById('modal-new-price').value='';
+  renderModalChart(m);renderModalHistory(m);
+  document.getElementById('history-modal').style.display='flex';
+}
+function closeModal(){document.getElementById('history-modal').style.display='none';modalIngId=null;}
+
+async function updatePriceFromModal(){
+  if(!modalIngId)return;
+  const m=master.find(x=>x.id===modalIngId);if(!m)return;
+  const newPrice=parseFloat(document.getElementById('modal-new-price').value);
+  if(isNaN(newPrice)||newPrice<=0){toast('正しい単価を入力してください');return;}
+  const today=new Date().toISOString().slice(0,10);
+  showLoading('単価を更新中...');
+  try{
+    await gasPost({action:'updateMasterPrice',id:modalIngId,price:newPrice,date:today});
+    if(!m.priceHistory)m.priceHistory=[];
+    const last=m.priceHistory[m.priceHistory.length-1];
+    if(last&&last.date===today)last.price=newPrice;else m.priceHistory.push({date:today,price:newPrice});
+    m.price=newPrice;
+    localStorage.setItem('genka_master',JSON.stringify(master));
+    setSyncStatus('ok');renderMaster();renderAlerts();updateAlertBadge();
+    renderModalChart(m);renderModalHistory(m);
+    toast(`「${m.name}」の単価を${newPrice}円に更新しました`);
+  }catch(e){setSyncStatus('error');toast('更新エラー: '+e.message);}
+  finally{hideLoading();}
+}
+
+function renderModalChart(m){
+  const hist=m.priceHistory||[{date:new Date().toISOString().slice(0,10),price:m.price}];
+  if(hist.length<2){document.getElementById('modal-chart').innerHTML='<div style="color:var(--text3);font-size:12px;padding:20px 0">履歴が2件以上になるとグラフが表示されます</div>';return;}
+  const prices=hist.map(h=>h.price);
+  const minP=Math.min(...prices),maxP=Math.max(...prices);
+  const pad=10,W=400,H=100;
+  const xStep=(W-pad*2)/(hist.length-1);
+  const yScale=maxP>minP?(H-pad*2)/(maxP-minP):1;
+  const pts=hist.map((h,i)=>({x:pad+i*xStep,y:H-pad-(h.price-minP)*yScale,h}));
+  document.getElementById('modal-chart').innerHTML=`<svg viewBox="0 0 ${W} ${H+16}" xmlns="http://www.w3.org/2000/svg">
+    <polyline points="${pts.map(p=>`${p.x},${p.y}`).join(' ')}" fill="none" stroke="#2D6A4F" stroke-width="2" stroke-linejoin="round"/>
+    ${pts.map((p,i)=>`<circle cx="${p.x}" cy="${p.y}" r="4" fill="${i===pts.length-1?'#1D4ED8':'#2D6A4F'}" stroke="white" stroke-width="1.5"/><text x="${p.x}" y="${p.y-8}" text-anchor="middle" font-size="9" fill="#6B6560">${p.h.price}</text>`).join('')}
+    ${pts.map(p=>`<text x="${p.x}" y="${H+12}" text-anchor="middle" font-size="8" fill="#9B9590">${p.h.date.slice(5)}</text>`).join('')}
+  </svg>`;
+}
+function renderModalHistory(m){
+  const hist=[...(m.priceHistory||[{date:'—',price:m.price}])].reverse();
+  document.getElementById('modal-history-list').innerHTML=hist.map((h,i)=>{
+    const next=hist[i+1];let chg='';
+    if(next){const diff=h.price-next.price,pct=Math.round(diff/next.price*100);
+      if(diff>0)chg=`<span class="price-change up">▲${pct}%(+${diff}円)</span>`;
+      else if(diff<0)chg=`<span class="price-change down">▼${Math.abs(pct)}%(${diff}円)</span>`;
+      else chg=`<span class="price-change same">変動なし</span>`;}
+    return `<div class="history-row">
+      <div><span style="font-weight:${i===0?700:400}">${h.date}</span>${i===0?' <span class="badge info" style="font-size:10px">最新</span>':''}</div>
+      <div style="display:flex;align-items:center;gap:10px">${chg}<span style="font-family:var(--mono);font-weight:${i===0?700:400}">${Number(h.price).toLocaleString()}円</span></div>
+    </div>`;
+  }).join('');
+}
+
+// ── Alerts ──────────────────────────────
+function getAlerts(){return master.filter(m=>{const cur=curPrice(m),prev=prevPrice(m);if(prev===null)return false;return(cur-prev)/prev*100>=ALERT_THRESHOLD;});}
+function updateAlertBadge(){const a=getAlerts();const b=document.getElementById('alert-nav-badge');if(a.length){b.style.display='';b.textContent=a.length;}else b.style.display='none';}
+function renderAlerts(){
+  const alerts=getAlerts(),container=document.getElementById('alerts-list'),empty=document.getElementById('alerts-empty'),notice=document.getElementById('alert-notice');
+  if(!alerts.length){container.innerHTML='';empty.style.display='';notice.style.display='none';return;}
+  empty.style.display='none';
+  const affected=[];alerts.forEach(m=>{menus.forEach(mn=>{if(mn.ings&&mn.ings.some(i=>i.name===m.name)&&!affected.find(x=>x.id===mn.id))affected.push(mn);});});
+  if(affected.length>0){notice.style.display='flex';document.getElementById('alert-notice-text').textContent=`${affected.length}件のメニューが影響を受けています。「全メニュー原価率を再計算」で更新できます。`;}
+  else notice.style.display='none';
+  container.innerHTML=alerts.map(m=>{
+    const cur=curPrice(m),prev=prevPrice(m),pct=Math.round((cur-prev)/prev*100);
+    const cls=pct>=15?'danger':'';
+    const usedIn=menus.filter(mn=>mn.ings&&mn.ings.some(i=>i.name===m.name));
+    return `<div class="alert-card ${cls}">
+      <div><div class="alert-name">${esc(m.name)}</div><div class="alert-detail">${prev}円 → ${cur}円（${m.unit}）${usedIn.length?' ／ '+usedIn.map(x=>x.name).join('、'):''}</div></div>
+      <div style="text-align:right"><div class="alert-pct ${cls||'warn'}">+${pct}%</div>
+      <button class="btn btn-outline btn-sm" style="margin-top:6px" onclick="openHistoryModal(${m.id})">📈 履歴</button></div>
+    </div>`;
+  }).join('');
+}
+
+async function recalcAllMenus(){
+  if(!master.length){toast('食材マスタが登録されていません');return;}
+  let updated=0;
+  const newMenus=menus.map(m=>{
+    const newIngs=(m.ings||[]).map(ing=>{const mi=master.find(x=>x.name===ing.name);if(!mi)return ing;const np=curPrice(mi);if(np===parseFloat(ing.price))return ing;updated++;return{...ing,price:String(np)};});
+    let cost=0;newIngs.forEach(i=>cost+=(parseFloat(i.price)||0)*(parseFloat(i.amount)||0));
+    cost=Math.round(cost*100)/100;
+    return{...m,ings:newIngs,cost,rate:Math.round(cost/m.price*10000)/100};
+  });
+  showLoading('全メニューを再計算中...');
+  try{
+    await gasPost({action:'saveAllMenus',menus:newMenus});
+    menus=newMenus;localStorage.setItem('genka_menus',JSON.stringify(menus));
+    setSyncStatus('ok');renderAlerts();renderList();renderReport();
+    toast(updated>0?`${updated}件の食材単価を更新し再計算しました`:'更新対象はありませんでした');
+  }catch(e){setSyncStatus('error');toast('再計算エラー: '+e.message);}
+  finally{hideLoading();}
+}
+
+// ── Report ───────────────────────────────
+function renderReport(){
+  document.getElementById('r-count').textContent=menus.length;
+  if(!menus.length){
+    document.getElementById('r-avg').textContent='—';document.getElementById('r-warn').textContent='0';
+    document.getElementById('chart-bars').innerHTML='<div class="empty" style="width:100%"><div class="empty-icon">📊</div><div class="empty-text">データがありません</div></div>';
+    document.getElementById('cat-summary').innerHTML='<div class="empty"><div class="empty-text">データがありません</div></div>';return;
+  }
+  const avg=Math.round(menus.reduce((s,m)=>s+m.rate,0)/menus.length*100)/100;
+  const warns=menus.filter(m=>m.rate>35).length;
+  const aEl=document.getElementById('r-avg');
+  aEl.textContent=fmtPct(avg);aEl.className='metric-value '+(avg<=35?'good':avg<=40?'warn':'bad');
+  document.getElementById('r-warn').textContent=warns;
+  const cols={good:'var(--accent)',warn:'var(--warn)',bad:'var(--danger)'};
+  document.getElementById('chart-bars').innerHTML='<div style="display:flex;align-items:flex-end;gap:8px;width:100%;height:140px">'+
+    menus.slice(-10).map(m=>{const cls=m.rate<=35?'good':m.rate<=40?'warn':'bad';
+      return `<div class="chart-bar-group"><div class="chart-bar-val">${fmtPct(m.rate)}</div><div class="chart-bar" style="height:${Math.max(Math.round(m.rate*1.4),4)}px;background:${cols[cls]}"></div><div class="chart-bar-label">${esc(m.name)}</div></div>`;
+    }).join('')+'</div>';
+  const cats={};menus.forEach(m=>{if(!cats[m.cat])cats[m.cat]={count:0,total:0};cats[m.cat].count++;cats[m.cat].total+=m.rate;});
+  document.getElementById('cat-summary').innerHTML=Object.entries(cats).map(([c,d])=>{
+    const a=Math.round(d.total/d.count*100)/100,cls=a<=35?'good':a<=40?'warn':'bad';
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)"><div><span style="font-weight:500">${c}</span> <span style="color:var(--text3);font-size:12px">${d.count}品</span></div><span class="badge ${cls}">平均 ${fmtPct(a)}</span></div>`;
+  }).join('');
+}
+
+// ── GAS ─────────────────────────────────
+async function saveGasUrl(){
+  const url=document.getElementById('gas-url-input').value.trim();
+  if(!url.startsWith('https://script.google.com')){showConnectionStatus('error','正しいGAS URLを入力してください');return;}
+  GAS_URL=url;localStorage.setItem('genka_gas_url',GAS_URL);
+  showConnectionStatus('loading','接続確認中...');
+  try{await loadAll();showConnectionStatus('ok','接続成功！データを読み込みました');toast('Googleスプレッドシートに接続しました');showTab('register');}
+  catch(e){showConnectionStatus('error','接続失敗: '+e.message);}
+}
+function showConnectionStatus(type,msg){
+  document.getElementById('connection-status').innerHTML=`<div class="tip-box tip-${type==='ok'?'info':type==='error'?'danger':'warn'}" style="margin-top:0"><span>${type==='ok'?'✅':type==='error'?'❌':'⏳'}</span><span>${msg}</span></div>`;
+  setSyncStatus(type);
+}
+function setSyncStatus(state,label){
+  const dot=document.getElementById('sync-dot'),lbl=document.getElementById('sync-label');
+  dot.className='sync-dot '+(state==='ok'?'ok':state==='error'?'err':state==='loading'?'loading':'');
+  lbl.textContent=label||(state==='ok'?'同期済み':state==='error'?'同期エラー':state==='loading'?'同期中...':'未接続');
+}
+async function gasGet(action){
+  if(!GAS_URL)throw new Error('GAS URLが設定されていません');
+  const res=await fetch(GAS_URL+'?action='+action);
+  const data=await res.json();if(data.error)throw new Error(data.error);return data;
+}
+async function gasPost(payload){
+  if(!GAS_URL)throw new Error('GAS URLが設定されていません');
+  const res=await fetch(GAS_URL,{method:'POST',body:JSON.stringify(payload)});
+  const data=await res.json();if(data.error)throw new Error(data.error);return data;
+}
+async function loadAll(){
+  setSyncStatus('loading');showLoading('最新データを取得中...');
+  try{
+    const[m,s]=await Promise.all([gasGet('getMenus'),gasGet('getMaster')]);
+    menus=m.menus||[];master=s.master||[];
+    localStorage.setItem('genka_menus',JSON.stringify(menus));localStorage.setItem('genka_master',JSON.stringify(master));
+    setSyncStatus('ok');refreshMasterUI();updateAlertBadge();renderList();renderReport();renderMaster();renderAlerts();
+  }catch(e){setSyncStatus('error');toast('データ取得エラー: '+e.message);}
+  finally{hideLoading();}
+}
+function showLoading(msg='処理中...'){document.getElementById('loading-msg').textContent=msg;document.getElementById('loading').style.display='flex';}
+function hideLoading(){document.getElementById('loading').style.display='none';}
+
+// ── CSV ──────────────────────────────────
+function exportCSV(){
+  if(!menus.length){toast('エクスポートするデータがありません');return;}
+  const h='メニュー名,カテゴリ,販売価格,食材原価,原価率,粗利,対象月,登録日\n';
+  const r=menus.map(m=>[m.name,m.cat,m.price,m.cost,fmtPct(m.rate),m.price-m.cost,m.month||'',m.savedAt.slice(0,10)].join(',')).join('\n');
+  const blob=new Blob(['\uFEFF'+h+r],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download='原価率データ_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();URL.revokeObjectURL(url);toast('CSVをダウンロードしました');
+}
+
+// ── CSV Import ──────────────────────────────
+
+
+// ── CSV Import ────────────────────────────
+function importCSV(input){
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const text = ev.target.result.replace(/^﻿/, '');
+    const lines = text.split('\n').map(l => l.replace(/\r$/, '')).filter(l => l.trim());
+    if(lines.length < 2){ toast('CSVにデータがありません'); return; }
+    const rows = lines.slice(1);
+    document.getElementById('ing-list').innerHTML = '';
+    rows.forEach(line => {
+      const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+      if(cols[0]){
+        addIngRow(cols[0]||'', cols[3]||'', cols[2]||'', cols[1]||'', false);
+      }
+    });
+    calcTotal();
+    toast(rows.length + '件の食材を読み込みました');
+    input.value = '';
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+// ── Toast ─────────────────────────────────
+let tt;
+function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>el.classList.remove('show'),2800);}
+</script>
+</body>
+</html>
