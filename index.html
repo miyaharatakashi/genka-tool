@@ -914,17 +914,15 @@ function exportIngCSV(){
     price:  row.querySelector('.ing-price').value,
   })).filter(r => r.name);
   if(!data.length){ toast('エクスポートする食材がありません'); return; }
-  const h = '食材名,使用量,単位,単価
-';
-  const r = data.map(d => [d.name, d.amount, d.unit, d.price].join(',')).join('
-');
-  const blob = new Blob(['﻿'+h+r], {type:'text/csv;charset=utf-8'});
+  const h = '\u98df\u6750\u540d,\u4f7f\u7528\u91cf,\u5358\u4f4d,\u5358\u4fa1\n';
+  const r = data.map(d => [d.name, d.amount, d.unit, d.price].join(',')).join('\n');
+  const blob = new Blob(['\uFEFF'+h+r], {type:'text/csv;charset=utf-8'});
   const url = URL.createObjectURL(blob), a = document.createElement('a');
   a.href = url;
-  a.download = '食材内訳_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.download = '\u98df\u6750\u5185\u8a33_'+new Date().toISOString().slice(0,10)+'.csv';
   a.click();
   URL.revokeObjectURL(url);
-  toast('食材内訳をエクスポートしました');
+  toast('\u98df\u6750\u5185\u8a33\u3092\u30a8\u30af\u30b9\u30dd\u30fc\u30c8\u3057\u307e\u3057\u305f');
 }
 
 // ── CSV Import ──────────────────────────────
@@ -940,17 +938,15 @@ function exportIngCSV(){
     price:  row.querySelector('.ing-price').value,
   })).filter(r => r.name);
   if(!data.length){ toast('エクスポートする食材がありません'); return; }
-  const h = '食材名,使用量,単位,単価
-';
-  const r = data.map(d => [d.name, d.amount, d.unit, d.price].join(',')).join('
-');
-  const blob = new Blob(['﻿'+h+r], {type:'text/csv;charset=utf-8'});
+  const h = '\u98df\u6750\u540d,\u4f7f\u7528\u91cf,\u5358\u4f4d,\u5358\u4fa1\n';
+  const r = data.map(d => [d.name, d.amount, d.unit, d.price].join(',')).join('\n');
+  const blob = new Blob(['\uFEFF'+h+r], {type:'text/csv;charset=utf-8'});
   const url = URL.createObjectURL(blob), a = document.createElement('a');
   a.href = url;
-  a.download = '食材内訳_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.download = '\u98df\u6750\u5185\u8a33_'+new Date().toISOString().slice(0,10)+'.csv';
   a.click();
   URL.revokeObjectURL(url);
-  toast('食材内訳をエクスポートしました');
+  toast('\u98df\u6750\u5185\u8a33\u3092\u30a8\u30af\u30b9\u30dd\u30fc\u30c8\u3057\u307e\u3057\u305f');
 }
 
 // ── CSV Import ────────────────────────────
