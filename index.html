@@ -173,18 +173,14 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:var(--surface2);}
           <div class="card-title" style="margin-bottom:0">食材内訳</div>
           <div style="display:flex;align-items:center;gap:8px">
             <span id="master-badge" class="badge info" style="display:none"></span>
-            <button class="btn btn-outline btn-sm" onclick="document.getElementById('csv-import-input').click()">CSVインポート</button>
-            <input type="file" id="csv-import-input" accept=".csv" style="display:none" onchange="importCSV(this)">
+            <button class="btn btn-outline btn-sm" onclick="exportIngCSV()">↓ 食材内訳.csv</button>
+            <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0">
+              📂 CSVインポート
+              <input type="file" id="csv-import-input" accept=".csv" style="display:none" onchange="importCSV(this)">
+            </label>
           </div>
         </div>
         <div id="master-tip" class="tip-box tip-info" style="display:none"><span>💡</span><span>食材名を入力すると食材マスタから自動補完されます</span></div>
-        <div style="margin-bottom:12px">
-          <label class="btn btn-outline btn-sm" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
-            <span>📂 CSVインポート</span>
-            <input type="file" id="csv-import" accept=".csv" style="display:none" onchange="importCSV(this)">
-          </label>
-          <span style="font-size:12px;color:var(--text3);margin-left:8px">形式: 食材名, 使用量, 単位, 単価</span>
-        </div>
         <div class="ing-header">
           <div></div>
           <div class="form-label">食材名</div>
@@ -253,6 +249,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:var(--surface2);}
           <span style="font-size:13px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em">登録済み食材</span>
           <div style="display:flex;align-items:center;gap:10px">
             <span id="master-total" style="font-size:12px;color:var(--text3)">0件</span>
+            <button class="btn btn-outline btn-sm" onclick="exportMasterCSV()">↓ CSVエクスポート</button>
             <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0">
               📂 CSVインポート
               <input type="file" id="master-csv-input" accept=".csv" style="display:none" onchange="importMasterCSV(this)">
@@ -907,8 +904,54 @@ function exportCSV(){
   a.click();URL.revokeObjectURL(url);toast('CSVをダウンロードしました');
 }
 
+// ── Ingredient CSV Export ───────────────────
+function exportIngCSV(){
+  const rows = [...document.querySelectorAll('#ing-list .ingredient-row')];
+  const data = rows.map(row => ({
+    name:   row.querySelector('.ing-name').value,
+    amount: row.querySelector('.ing-amount').value,
+    unit:   row.querySelector('.ing-unit').value,
+    price:  row.querySelector('.ing-price').value,
+  })).filter(r => r.name);
+  if(!data.length){ toast('エクスポートする食材がありません'); return; }
+  const h = '食材名,使用量,単位,単価
+';
+  const r = data.map(d => [d.name, d.amount, d.unit, d.price].join(',')).join('
+');
+  const blob = new Blob(['﻿'+h+r], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url;
+  a.download = '食材内訳_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('食材内訳をエクスポートしました');
+}
+
 // ── CSV Import ──────────────────────────────
 
+
+// ── Ingredient CSV Export ───────────────────
+function exportIngCSV(){
+  const rows = [...document.querySelectorAll('#ing-list .ingredient-row')];
+  const data = rows.map(row => ({
+    name:   row.querySelector('.ing-name').value,
+    amount: row.querySelector('.ing-amount').value,
+    unit:   row.querySelector('.ing-unit').value,
+    price:  row.querySelector('.ing-price').value,
+  })).filter(r => r.name);
+  if(!data.length){ toast('エクスポートする食材がありません'); return; }
+  const h = '食材名,使用量,単位,単価
+';
+  const r = data.map(d => [d.name, d.amount, d.unit, d.price].join(',')).join('
+');
+  const blob = new Blob(['﻿'+h+r], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url;
+  a.download = '食材内訳_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('食材内訳をエクスポートしました');
+}
 
 // ── CSV Import ────────────────────────────
 function importCSV(input){
@@ -933,6 +976,20 @@ function importCSV(input){
   };
   reader.readAsText(file, 'UTF-8');
 }
+// ── Master CSV Export ────────────────────────
+function exportMasterCSV(){
+  if(!master.length){ toast('エクスポートするデータがありません'); return; }
+  const h = '食材名,現在単価,単位,カテゴリ\n';
+  const r = master.map(m => [m.name, curPrice(m), m.unit, m.cat].join(',')).join('\n');
+  const blob = new Blob(['﻿'+h+r], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url;
+  a.download = '食材マスタ_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('食材マスタをエクスポートしました');
+}
+
 // ── Master CSV Import ────────────────────────
 function importMasterCSV(input){
   const file = input.files[0];
