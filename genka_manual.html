@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>原価率管理ツール 操作マニュアル</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #F7F5F0; --surface: #fff; --surface2: #F0EDE8; --border: #E0DDD8;
+  --text: #1A1816; --text2: #6B6560; --text3: #9B9590;
+  --accent: #2D6A4F; --accent-light: #E8F5EE;
+  --warn: #B45309; --warn-light: #FEF3C7;
+  --danger: #991B1B; --danger-light: #FEE2E2;
+  --info: #1D4ED8; --info-light: #EFF6FF;
+  --mono: 'DM Mono', monospace;
+  --sans: 'Noto Sans JP', sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--sans); background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.7; }
+
+/* Layout */
+.layout { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+.sidebar { background: var(--text); color: #fff; padding: 28px 20px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+.sidebar-logo { font-size: 13px; font-weight: 700; letter-spacing: .12em; opacity: .9; margin-bottom: 24px; text-transform: uppercase; }
+.nav-section { font-size: 10px; color: rgba(255,255,255,.35); letter-spacing: .1em; text-transform: uppercase; margin: 16px 0 6px; padding: 0 14px; }
+.nav-item { padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; color: rgba(255,255,255,.65); margin-bottom: 2px; display: flex; align-items: center; gap: 9px; text-decoration: none; transition: all .15s; }
+.nav-item:hover { background: rgba(255,255,255,.08); color: #fff; }
+.nav-item.active { background: rgba(255,255,255,.15); color: #fff; }
+.nav-divider { height: 1px; background: rgba(255,255,255,.1); margin: 12px 0; }
+.main { padding: 48px 48px 80px; max-width: 860px; }
+
+/* Hero */
+.hero { margin-bottom: 48px; }
+.hero-badge { display: inline-block; background: var(--accent-light); color: var(--accent); font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 100px; margin-bottom: 12px; letter-spacing: .06em; }
+.hero h1 { font-size: 32px; font-weight: 700; line-height: 1.3; margin-bottom: 12px; }
+.hero p { font-size: 15px; color: var(--text2); max-width: 560px; }
+.hero-url { margin-top: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; display: flex; align-items: center; gap: 12px; }
+.hero-url .label { font-size: 11px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; }
+.hero-url .url { font-family: var(--mono); font-size: 13px; color: var(--info); }
+
+/* Sections */
+.section { margin-bottom: 56px; scroll-margin-top: 24px; }
+.section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+.section-num { width: 32px; height: 32px; background: var(--accent); color: #fff; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; flex-shrink: 0; }
+.section-title { font-size: 20px; font-weight: 700; }
+.section-divider { height: 1px; background: var(--border); margin-bottom: 20px; }
+
+/* UI Mockup */
+.mockup { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin: 20px 0; }
+.mockup-bar { background: var(--surface2); border-bottom: 1px solid var(--border); padding: 10px 16px; display: flex; align-items: center; gap: 8px; }
+.mockup-dot { width: 10px; height: 10px; border-radius: 50%; }
+.mockup-dot.r { background: #FF5F57; }
+.mockup-dot.y { background: #FEBC2E; }
+.mockup-dot.g { background: #28C840; }
+.mockup-url { font-family: var(--mono); font-size: 11px; color: var(--text3); margin-left: 8px; }
+.mockup-body { display: grid; grid-template-columns: 180px 1fr; }
+.mockup-sidebar { background: var(--text); padding: 16px 12px; }
+.mockup-sidebar-logo { font-size: 10px; font-weight: 700; color: rgba(255,255,255,.7); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 12px; }
+.mockup-nav { padding: 6px 10px; border-radius: 6px; font-size: 11px; color: rgba(255,255,255,.6); margin-bottom: 2px; display: flex; align-items: center; gap: 7px; }
+.mockup-nav.active { background: rgba(255,255,255,.15); color: #fff; }
+.mockup-nav-icon { font-size: 12px; width: 14px; }
+.mockup-content { padding: 20px; }
+.mockup-title { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+.mockup-sub { font-size: 11px; color: var(--text2); margin-bottom: 16px; }
+
+/* Form mockup */
+.mock-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 10px; }
+.mock-card-title { font-size: 10px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 10px; }
+.mock-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.mock-label { font-size: 10px; color: var(--text2); font-weight: 500; margin-bottom: 3px; }
+.mock-input { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; font-size: 11px; color: var(--text); font-family: var(--sans); width: 100%; }
+.mock-input.filled { color: var(--text); }
+.mock-input.placeholder { color: var(--text3); }
+
+/* Ingredient table mockup */
+.mock-ing-header { display: grid; grid-template-columns: 20px 1fr 60px 45px 60px 55px 24px; gap: 4px; margin-bottom: 4px; }
+.mock-ing-row { display: grid; grid-template-columns: 20px 1fr 60px 45px 60px 55px 24px; gap: 4px; margin-bottom: 4px; align-items: center; }
+.mock-col-label { font-size: 9px; color: var(--text2); font-weight: 500; }
+.mock-ing-input { background: var(--surface); border: 1px solid var(--border); border-radius: 5px; padding: 4px 6px; font-size: 10px; color: var(--text); }
+.mock-ing-input.green { border-color: var(--accent); background: var(--accent-light); }
+.mock-cost { font-family: var(--mono); font-size: 10px; color: var(--text2); text-align: right; padding: 4px; }
+.mock-del { width: 20px; height: 20px; border: 1px solid var(--border); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--text3); }
+.mock-drag { color: var(--text3); font-size: 12px; text-align: center; }
+
+/* Metrics mockup */
+.mock-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0; }
+.mock-metric { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px; }
+.mock-metric-label { font-size: 9px; color: var(--text3); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px; }
+.mock-metric-value { font-family: var(--mono); font-size: 18px; font-weight: 500; }
+.mock-metric-value.good { color: var(--accent); }
+.mock-metric-value.warn { color: var(--warn); }
+
+/* Rate bar mockup */
+.mock-rate-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 10px; }
+.mock-rate-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.mock-rate-title { font-size: 12px; font-weight: 700; }
+.mock-bar-bg { height: 7px; background: var(--surface2); border-radius: 4px; overflow: hidden; position: relative; margin-bottom: 4px; }
+.mock-bar-fill { height: 100%; border-radius: 4px; background: var(--accent); }
+.mock-bar-labels { display: flex; justify-content: space-between; font-size: 9px; color: var(--text3); }
+.mock-rate-comment { font-size: 10px; color: var(--text2); margin-top: 8px; }
+
+/* Badge */
+.badge { display: inline-block; padding: 3px 10px; border-radius: 100px; font-size: 11px; font-weight: 700; }
+.badge.good { background: var(--accent-light); color: var(--accent); }
+.badge.warn { background: var(--warn-light); color: var(--warn); }
+.badge.bad { background: var(--danger-light); color: var(--danger); }
+.badge.info { background: var(--info-light); color: var(--info); }
+.badge.sm { font-size: 9px; padding: 2px 7px; }
+
+/* Tip / warn boxes */
+.tip { background: var(--info-light); border: 1px solid #BFDBFE; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: var(--info); margin: 12px 0; display: flex; gap: 8px; }
+.warn-box { background: var(--warn-light); border: 1px solid #FCD34D; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: var(--warn); margin: 12px 0; display: flex; gap: 8px; }
+.danger-box { background: var(--danger-light); border: 1px solid #FCA5A5; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: var(--danger); margin: 12px 0; display: flex; gap: 8px; }
+
+/* Steps */
+.steps { counter-reset: step; margin: 16px 0; }
+.step { display: flex; gap: 14px; margin-bottom: 14px; align-items: flex-start; }
+.step-num { width: 26px; height: 26px; background: var(--text); color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+.step-body { flex: 1; }
+.step-title { font-weight: 700; font-size: 14px; margin-bottom: 2px; }
+.step-desc { font-size: 13px; color: var(--text2); }
+
+/* Table */
+.table-wrap { overflow-x: auto; margin: 16px 0; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; padding: 10px 12px; background: var(--text); color: #fff; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+tr:nth-child(even) td { background: var(--surface2); }
+tr:last-child td { border-bottom: none; }
+
+/* Rate table */
+.rate-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.rate-row:last-child { border-bottom: none; }
+.rate-pct { font-family: var(--mono); font-weight: 700; font-size: 15px; min-width: 60px; }
+.rate-good { color: var(--accent); }
+.rate-warn { color: var(--warn); }
+.rate-bad { color: var(--danger); }
+.rate-desc { font-size: 13px; color: var(--text2); }
+
+/* Checklist */
+.checklist { margin: 12px 0; }
+.check-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.check-item:last-child { border-bottom: none; }
+.check-box { width: 16px; height: 16px; border: 1.5px solid var(--border); border-radius: 4px; flex-shrink: 0; margin-top: 1px; }
+
+/* Report mockup */
+.mock-chart { display: flex; align-items: flex-end; gap: 6px; height: 80px; padding: 0 4px; }
+.mock-bar-group { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.mock-bar { width: 100%; border-radius: 3px 3px 0 0; }
+.mock-bar-label { font-size: 8px; color: var(--text3); text-align: center; white-space: nowrap; overflow: hidden; max-width: 44px; text-overflow: ellipsis; }
+.mock-bar-val { font-size: 8px; font-family: var(--mono); color: var(--text2); }
+
+/* Alert mockup */
+.mock-alert { border-left: 3px solid var(--warn); background: var(--warn-light); border-radius: 0 8px 8px 0; padding: 10px 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+.mock-alert-name { font-weight: 700; font-size: 12px; }
+.mock-alert-detail { font-size: 10px; color: var(--text2); margin-top: 2px; }
+.mock-alert-pct { font-family: var(--mono); font-weight: 700; font-size: 16px; color: var(--warn); }
+
+/* Master table mockup */
+.mock-table { width: 100%; border-collapse: collapse; font-size: 10px; }
+.mock-table th { background: var(--surface2); color: var(--text2); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; padding: 6px 8px; text-align: left; border-bottom: 1px solid var(--border); font-size: 9px; }
+.mock-table td { padding: 7px 8px; border-bottom: 1px solid var(--border); color: var(--text); }
+.mock-table tr:last-child td { border-bottom: none; }
+
+/* CSV section */
+.csv-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; }
+.csv-card-title { font-weight: 700; font-size: 13px; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+.csv-code { background: var(--surface2); border-radius: 6px; padding: 10px 12px; font-family: var(--mono); font-size: 12px; color: var(--text2); margin-top: 8px; line-height: 1.8; }
+
+/* Print */
+@media print {
+  .sidebar { display: none; }
+  .layout { grid-template-columns: 1fr; }
+  .main { padding: 20px; }
+}
+@media (max-width: 768px) {
+  .layout { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="layout">
+
+<!-- Sidebar (same as actual tool) -->
+<div class="sidebar">
+  <div class="sidebar-logo">🍽 原価管理</div>
+  <div class="nav-section">マニュアル目次</div>
+  <a class="nav-item active" href="#screen"><span class="nav-icon">🖥</span> 画面の見方</a>
+  <a class="nav-item" href="#master"><span class="nav-icon">◎</span> 食材マスタ</a>
+  <a class="nav-item" href="#register"><span class="nav-icon">＋</span> メニュー登録</a>
+  <a class="nav-item" href="#list"><span class="nav-icon">≡</span> メニュー一覧</a>
+  <a class="nav-item" href="#report"><span class="nav-icon">↗</span> 月次レポート</a>
+  <a class="nav-item" href="#alert"><span class="nav-icon">⚠</span> 値上がりアラート</a>
+  <a class="nav-item" href="#csv"><span class="nav-icon">↓</span> CSVのやり取り</a>
+  <a class="nav-item" href="#rate"><span class="nav-icon">📊</span> 原価率の目安</a>
+  <div class="nav-divider"></div>
+  <a class="nav-item" href="index.html"><span class="nav-icon">🔗</span> ツールを開く</a>
+</div>
+
+<div class="main">
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-badge">操作マニュアル</div>
+    <h1>📊 原価率管理ツール</h1>
+    <p>メニューごとの食材原価を記録・管理するためのツールです。毎月の原価率を把握し、利益改善に役立てましょう。</p>
+    <div class="hero-url">
+      <span class="label">URL</span>
+      <span class="url">https://miyaharatakashi.github.io/genka-tool/</span>
+    </div>
+  </div>
+
+  <!-- 1. 画面の見方 -->
+  <div class="section" id="screen">
+    <div class="section-header">
+      <div class="section-num">1</div>
+      <div class="section-title">画面の見方</div>
+    </div>
+    <div class="section-divider"></div>
+    <p style="margin-bottom:16px;color:var(--text2)">ツールを開くと左側にナビゲーションメニュー、右側にメインコンテンツが表示されます。</p>
+
+    <!-- UI Mockup: 全体レイアウト -->
+    <div class="mockup">
+      <div class="mockup-bar">
+        <div class="mockup-dot r"></div><div class="mockup-dot y"></div><div class="mockup-dot g"></div>
+        <span class="mockup-url">miyaharatakashi.github.io/genka-tool/</span>
+      </div>
+      <div class="mockup-body">
+        <div class="mockup-sidebar">
+          <div class="mockup-sidebar-logo">🍽 原価管理</div>
+          <div class="mockup-nav active"><span class="mockup-nav-icon">＋</span> メニュー登録</div>
+          <div class="mockup-nav"><span class="mockup-nav-icon">≡</span> メニュー一覧</div>
+          <div class="mockup-nav"><span class="mockup-nav-icon">◎</span> 食材マスタ</div>
+          <div class="mockup-nav"><span class="mockup-nav-icon">⚠</span> 値上がりアラート</div>
+          <div class="mockup-nav"><span class="mockup-nav-icon">↗</span> 月次レポート</div>
+          <div style="height:1px;background:rgba(255,255,255,.1);margin:8px 0"></div>
+          <div class="mockup-nav"><span class="mockup-nav-icon">⚙</span> 設定</div>
+          <div class="mockup-nav"><span class="mockup-nav-icon">↓</span> CSVエクスポート</div>
+          <div style="margin-top:16px;font-size:9px;color:rgba(255,255,255,.35);padding:0 10px;display:flex;align-items:center;gap:5px">
+            <div style="width:5px;height:5px;border-radius:50%;background:#4ADE80"></div> 同期済み
+          </div>
+        </div>
+        <div class="mockup-content">
+          <div class="mockup-title">メニュー登録</div>
+          <div class="mockup-sub">食材を入力して原価率を計算・保存できます</div>
+          <div style="background:var(--surface2);border-radius:6px;padding:12px;font-size:11px;color:var(--text2)">
+            メインコンテンツがここに表示されます
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>メニュー</th><th>説明</th></tr></thead>
+        <tbody>
+          <tr><td><b>＋ メニュー登録</b></td><td>新しいメニューの原価を入力・保存する</td></tr>
+          <tr><td><b>≡ メニュー一覧</b></td><td>登録済みメニューの一覧を確認する</td></tr>
+          <tr><td><b>◎ 食材マスタ</b></td><td>よく使う食材の単価を事前登録する</td></tr>
+          <tr><td><b>⚠ 値上がりアラート</b></td><td>単価が上がった食材を確認する</td></tr>
+          <tr><td><b>↗ 月次レポート</b></td><td>原価率のグラフ・集計を見る</td></tr>
+          <tr><td><b>⚙ 設定</b></td><td>GoogleスプレッドシートのURLを設定する</td></tr>
+          <tr><td><b>↓ CSVエクスポート</b></td><td>メニューデータをCSVでダウンロードする</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="tip"><span>💡</span> 左下の「● 同期済み」はGoogleスプレッドシートとの接続状態を示します。「同期エラー」になっている場合は設定画面でURLを再入力してください。</div>
+  </div>
+
+  <!-- 2. 食材マスタ -->
+  <div class="section" id="master">
+    <div class="section-header">
+      <div class="section-num">2</div>
+      <div class="section-title">食材マスタを登録する</div>
+    </div>
+    <div class="section-divider"></div>
+    <p style="margin-bottom:16px;color:var(--text2)">よく使う食材を事前登録しておくと、メニュー登録時に食材名を入力するだけで単価が<b>自動補完</b>されます。</p>
+
+    <div class="mockup">
+      <div class="mockup-bar">
+        <div class="mockup-dot r"></div><div class="mockup-dot y"></div><div class="mockup-dot g"></div>
+        <span class="mockup-url">食材マスタ</span>
+      </div>
+      <div style="padding:16px">
+        <div class="mock-card">
+          <div class="mock-card-title">食材を追加</div>
+          <div style="display:grid;grid-template-columns:1fr 100px 80px 100px auto;gap:8px;align-items:end">
+            <div><div class="mock-label">食材名</div><div class="mock-input filled">チョコレート</div></div>
+            <div><div class="mock-label">単価（円）</div><div class="mock-input filled">4.45</div></div>
+            <div><div class="mock-label">単位</div><div class="mock-input filled">g</div></div>
+            <div><div class="mock-label">カテゴリ</div><div class="mock-input filled">乳製品</div></div>
+            <div style="background:var(--text);color:#fff;border-radius:6px;padding:7px 12px;font-size:11px;font-weight:700;text-align:center">追加</div>
+          </div>
+        </div>
+        <div class="mock-card" style="padding:0;overflow:hidden">
+          <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em">登録済み食材</span>
+            <div style="display:flex;gap:8px;align-items:center">
+              <span style="font-size:10px;color:var(--text3)">3件</span>
+              <div style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 8px;font-size:10px;color:var(--text2)">↓ CSVエクスポート</div>
+              <div style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 8px;font-size:10px;color:var(--text2)">📂 CSVインポート</div>
+            </div>
+          </div>
+          <table class="mock-table">
+            <thead><tr><th>食材名</th><th>現在単価</th><th>単位</th><th>カテゴリ</th><th>前回比</th><th>使用状況</th><th></th></tr></thead>
+            <tbody>
+              <tr><td><b>チョコレート</b></td><td style="font-family:var(--mono)">4.45円</td><td>g</td><td><span class="badge info sm">乳製品</span></td><td><span class="badge bad sm">▲12%</span></td><td style="color:var(--accent)">2品で使用中</td><td style="font-size:10px;color:var(--text2)">📈 履歴　🗑</td></tr>
+              <tr><td><b>無塩バター</b></td><td style="font-family:var(--mono)">2.40円</td><td>g</td><td><span class="badge info sm">乳製品</span></td><td style="color:var(--text3);font-size:10px">変動なし</td><td style="color:var(--accent)">1品で使用中</td><td style="font-size:10px;color:var(--text2)">📈 履歴　🗑</td></tr>
+              <tr><td><b>塩</b></td><td style="font-family:var(--mono)">0.46円</td><td>g</td><td><span class="badge info sm">調味料</span></td><td style="color:var(--text3);font-size:10px">—</td><td style="color:var(--text3)">未使用</td><td style="font-size:10px;color:var(--text2)">📈 履歴　🗑</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><div class="step-body"><div class="step-title">左メニューの「◎ 食材マスタ」をクリック</div></div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-body"><div class="step-title">「食材を追加」フォームに入力する</div><div class="step-desc">食材名・単価・単位・カテゴリを入力します</div></div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-body"><div class="step-title">「追加」ボタンをクリック</div><div class="step-desc">一覧に表示されます。CSVで一括登録することもできます。</div></div></div>
+    </div>
+    <div class="tip"><span>💡</span> CSVで一括登録もできます。「↓ CSVエクスポート」でテンプレートをダウンロードし、Excelで編集後に「📂 CSVインポート」で一括登録できます。</div>
+  </div>
+
+  <!-- 3. メニュー登録 -->
+  <div class="section" id="register">
+    <div class="section-header">
+      <div class="section-num">3</div>
+      <div class="section-title">メニューを登録する</div>
+    </div>
+    <div class="section-divider"></div>
+
+    <div class="mockup">
+      <div class="mockup-bar">
+        <div class="mockup-dot r"></div><div class="mockup-dot y"></div><div class="mockup-dot g"></div>
+        <span class="mockup-url">メニュー登録</span>
+      </div>
+      <div style="padding:16px">
+        <!-- 基本情報 -->
+        <div class="mock-card">
+          <div class="mock-card-title">基本情報</div>
+          <div class="mock-grid">
+            <div><div class="mock-label">メニュー名</div><div class="mock-input filled">ガトーショコラ</div></div>
+            <div><div class="mock-label">カテゴリ</div><div class="mock-input filled">デザート</div></div>
+            <div><div class="mock-label">販売価格（円・税抜）</div><div class="mock-input filled">4000</div></div>
+            <div><div class="mock-label">対象月</div><div class="mock-input filled">2026年03月</div></div>
+          </div>
+          <div style="margin-top:8px"><div class="mock-label">メモ</div><div class="mock-input placeholder" style="height:36px">備考・メモなど</div></div>
+        </div>
+
+        <!-- 食材内訳 -->
+        <div class="mock-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <div class="mock-card-title" style="margin-bottom:0">食材内訳</div>
+            <div style="display:flex;gap:6px">
+              <span class="badge info sm">食材マスタ 3件</span>
+              <div style="background:none;border:1px solid var(--border);border-radius:5px;padding:2px 7px;font-size:9px;color:var(--text2)">↓ 食材内訳.csv</div>
+              <div style="background:none;border:1px solid var(--border);border-radius:5px;padding:2px 7px;font-size:9px;color:var(--text2)">📂 CSVインポート</div>
+            </div>
+          </div>
+          <div style="background:var(--info-light);border:1px solid #BFDBFE;border-radius:6px;padding:7px 10px;font-size:10px;color:var(--info);margin-bottom:8px;display:flex;gap:6px">
+            <span>💡</span><span>食材名を入力すると食材マスタから自動補完されます</span>
+          </div>
+          <div class="mock-ing-header">
+            <div></div>
+            <div class="mock-col-label">食材名</div>
+            <div class="mock-col-label">使用量</div>
+            <div class="mock-col-label">単位</div>
+            <div class="mock-col-label">単価（円）</div>
+            <div class="mock-col-label" style="text-align:right">原価（円）</div>
+            <div></div>
+          </div>
+          <div class="mock-ing-row">
+            <div class="mock-drag">⠿</div>
+            <div class="mock-ing-input green">チョコレート</div>
+            <div class="mock-ing-input">190</div>
+            <div class="mock-ing-input">g</div>
+            <div class="mock-ing-input">4.45</div>
+            <div class="mock-cost">845.50円</div>
+            <div class="mock-del">×</div>
+          </div>
+          <div class="mock-ing-row">
+            <div class="mock-drag">⠿</div>
+            <div class="mock-ing-input green">無塩バター</div>
+            <div class="mock-ing-input">50</div>
+            <div class="mock-ing-input">g</div>
+            <div class="mock-ing-input">2.40</div>
+            <div class="mock-cost">120.00円</div>
+            <div class="mock-del">×</div>
+          </div>
+          <div class="mock-ing-row">
+            <div class="mock-drag">⠿</div>
+            <div class="mock-ing-input placeholder" style="color:var(--text3)">食材名（入力で候補表示）</div>
+            <div class="mock-ing-input">0.00</div>
+            <div class="mock-ing-input"></div>
+            <div class="mock-ing-input placeholder" style="color:var(--text3)">例:120.50</div>
+            <div class="mock-cost">—</div>
+            <div class="mock-del">×</div>
+          </div>
+        </div>
+
+        <!-- Metrics -->
+        <div class="mock-metrics">
+          <div class="mock-metric"><div class="mock-metric-label">食材合計</div><div class="mock-metric-value">1,307.40円</div></div>
+          <div class="mock-metric"><div class="mock-metric-label">原価率</div><div class="mock-metric-value good">32.69%</div></div>
+          <div class="mock-metric"><div class="mock-metric-label">粗利</div><div class="mock-metric-value">2,692.60円</div></div>
+        </div>
+
+        <!-- Rate bar -->
+        <div class="mock-rate-card">
+          <div class="mock-rate-top">
+            <span class="mock-rate-title">原価率チェック</span>
+            <span class="badge good sm">目標内</span>
+          </div>
+          <div class="mock-bar-bg">
+            <div class="mock-bar-fill" style="width:32.69%"></div>
+            <div style="position:absolute;left:35%;top:-2px;height:11px;width:1px;background:var(--accent);opacity:.5"></div>
+          </div>
+          <div class="mock-bar-labels"><span>0%</span><span style="color:var(--accent)">目標 30–35%</span><span>100%</span></div>
+          <div class="mock-rate-comment">飲食店の目標範囲（30〜35%）内です。</div>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;gap:8px">
+          <div style="border:1px solid var(--border);border-radius:7px;padding:7px 16px;font-size:12px;font-weight:700;color:var(--text)">クリア</div>
+          <div style="background:var(--text);color:#fff;border-radius:7px;padding:7px 16px;font-size:12px;font-weight:700">保存する</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><div class="step-body"><div class="step-title">左メニューの「＋ メニュー登録」をクリック</div></div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-body"><div class="step-title">基本情報を入力する</div><div class="step-desc">メニュー名・カテゴリ・販売価格・対象月・メモを入力します</div></div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-body"><div class="step-title">食材内訳を入力する</div><div class="step-desc">食材名を入力すると食材マスタから候補が表示されます。選択すると単価が自動入力されます。原価は「単価 × 使用量」で自動計算されます。</div></div></div>
+      <div class="step"><div class="step-num">4</div><div class="step-body"><div class="step-title">原価率チェックを確認する</div><div class="step-desc">目標範囲（30〜35%）に入っているか確認します</div></div></div>
+      <div class="step"><div class="step-num">5</div><div class="step-body"><div class="step-title">「保存する」をクリック</div><div class="step-desc">Googleスプレッドシートに自動保存されます</div></div></div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>判定</th><th>原価率</th><th>対応</th></tr></thead>
+        <tbody>
+          <tr><td><span class="badge good">優良</span></td><td style="font-family:var(--mono)">〜30%</td><td>利益率が高い状態。このまま維持</td></tr>
+          <tr><td><span class="badge good">目標内</span></td><td style="font-family:var(--mono)">30〜35%</td><td>飲食店として理想的な状態</td></tr>
+          <tr><td><span class="badge warn">やや高め</span></td><td style="font-family:var(--mono)">35〜40%</td><td>食材・仕入れの見直しを検討</td></tr>
+          <tr><td><span class="badge bad">要改善</span></td><td style="font-family:var(--mono)">40%〜</td><td>販売価格の引き上げを検討</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 4. メニュー一覧 -->
+  <div class="section" id="list">
+    <div class="section-header">
+      <div class="section-num">4</div>
+      <div class="section-title">メニュー一覧を確認する</div>
+    </div>
+    <div class="section-divider"></div>
+    <p style="margin-bottom:16px;color:var(--text2)">左メニューの「≡ メニュー一覧」をクリックすると、登録済みのメニューが一覧で表示されます。</p>
+
+    <div class="mockup">
+      <div class="mockup-bar">
+        <div class="mockup-dot r"></div><div class="mockup-dot y"></div><div class="mockup-dot g"></div>
+        <span class="mockup-url">メニュー一覧</span>
+      </div>
+      <div style="padding:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <span style="font-size:11px;color:var(--text2)">登録済みメニュー数: 3件</span>
+          <div style="display:flex;gap:6px">
+            <div style="border:1px solid var(--border);border-radius:5px;padding:4px 10px;font-size:10px;color:var(--text2)">🔄 更新</div>
+            <div style="border:1px solid var(--border);border-radius:5px;padding:4px 10px;font-size:10px;color:var(--text2)">CSVエクスポート</div>
+            <div style="background:var(--text);color:#fff;border-radius:5px;padding:4px 10px;font-size:10px;font-weight:700">＋ 新規登録</div>
+          </div>
+        </div>
+        <div class="mock-card" style="padding:0;overflow:hidden">
+          <table class="mock-table">
+            <thead><tr><th>メニュー名</th><th>カテゴリ</th><th>販売価格</th><th>食材原価</th><th>原価率</th><th>粗利</th><th>対象月</th><th></th></tr></thead>
+            <tbody>
+              <tr><td><b>ガトーショコラ</b></td><td>デザート</td><td style="font-family:var(--mono)">4,000円</td><td style="font-family:var(--mono)">1,307.40円</td><td><span class="badge good sm">32.69%</span></td><td style="font-family:var(--mono)">2,692.60円</td><td style="color:var(--text3)">2026-03</td><td style="font-size:10px;color:var(--text2)">✏ 🗑</td></tr>
+              <tr><td><b>マルゲリータ</b></td><td>フード</td><td style="font-family:var(--mono)">1,200円</td><td style="font-family:var(--mono)">420.00円</td><td><span class="badge good sm">35.00%</span></td><td style="font-family:var(--mono)">780.00円</td><td style="color:var(--text3)">2026-03</td><td style="font-size:10px;color:var(--text2)">✏ 🗑</td></tr>
+              <tr><td><b>カルボナーラ</b></td><td>フード</td><td style="font-family:var(--mono)">1,400円</td><td style="font-family:var(--mono)">560.00円</td><td><span class="badge warn sm">40.00%</span></td><td style="font-family:var(--mono)">840.00円</td><td style="color:var(--text3)">2026-03</td><td style="font-size:10px;color:var(--text2)">✏ 🗑</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="tip"><span>💡</span> ✏ ボタンで編集、🗑 ボタンで削除できます。🔄 更新ボタンで最新データをスプレッドシートから取得できます。</div>
+  </div>
+
+  <!-- 5. 月次レポート -->
+  <div class="section" id="report">
+    <div class="section-header">
+      <div class="section-num">5</div>
+      <div class="section-title">月次レポートを見る</div>
+    </div>
+    <div class="section-divider"></div>
+    <p style="margin-bottom:16px;color:var(--text2)">左メニューの「↗ 月次レポート」で原価率の集計・グラフを確認できます。</p>
+
+    <div class="mockup">
+      <div class="mockup-bar">
+        <div class="mockup-dot r"></div><div class="mockup-dot y"></div><div class="mockup-dot g"></div>
+        <span class="mockup-url">月次レポート</span>
+      </div>
+      <div style="padding:16px">
+        <div class="mock-metrics">
+          <div class="mock-metric"><div class="mock-metric-label">登録メニュー数</div><div class="mock-metric-value">3</div></div>
+          <div class="mock-metric"><div class="mock-metric-label">平均原価率</div><div class="mock-metric-value good">35.90%</div></div>
+          <div class="mock-metric"><div class="mock-metric-label">要改善メニュー</div><div class="mock-metric-value" style="color:var(--danger)">1</div></div>
+        </div>
+        <div class="mock-card">
+          <div class="mock-card-title">メニュー別原価率</div>
+          <div class="mock-chart">
+            <div class="mock-bar-group">
+              <div class="mock-bar-val">32.69%</div>
+              <div class="mock-bar" style="height:46px;background:var(--accent)"></div>
+              <div class="mock-bar-label">ガトーショコラ</div>
+            </div>
+            <div class="mock-bar-group">
+              <div class="mock-bar-val">35.00%</div>
+              <div class="mock-bar" style="height:49px;background:var(--accent)"></div>
+              <div class="mock-bar-label">マルゲリータ</div>
+            </div>
+            <div class="mock-bar-group">
+              <div class="mock-bar-val">40.00%</div>
+              <div class="mock-bar" style="height:56px;background:var(--warn)"></div>
+              <div class="mock-bar-label">カルボナーラ</div>
+            </div>
+          </div>
+        </div>
+        <div class="mock-card">
+          <div class="mock-card-title">カテゴリ別サマリ</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+            <div><span style="font-weight:700;font-size:12px">デザート</span> <span style="color:var(--text3);font-size:10px">1品</span></div>
+            <span class="badge good sm">平均 32.69%</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0">
+            <div><span style="font-weight:700;font-size:12px">フード</span> <span style="color:var(--text3);font-size:10px">2品</span></div>
+            <span class="badge warn sm">平均 37.50%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>指標</th><th>説明</th></tr></thead>
+        <tbody>
+          <tr><td><b>登録メニュー数</b></td><td>登録されているメニューの総数</td></tr>
+          <tr><td><b>平均原価率</b></td><td>全メニューの原価率の平均値</td></tr>
+          <tr><td><b>要改善メニュー</b></td><td>原価率35%を超えているメニューの数</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 6. アラート -->
+  <div class="section" id="alert">
+    <div class="section-header">
+      <div class="section-num">6</div>
+      <div class="section-title">値上がりアラートを確認する</div>
+    </div>
+    <div class="section-divider"></div>
+    <p style="margin-bottom:16px;color:var(--text2)">食材の単価を更新したとき、前回比5%以上値上がりした食材が自動的にアラート表示されます。</p>
+
+    <div class="mockup">
+      <div class="mockup-bar">
+        <div class="mockup-dot r"></div><div class="mockup-dot y"></div><div class="mockup-dot g"></div>
+        <span class="mockup-url">値上がりアラート</span>
+      </div>
+      <div style="padding:16px">
+        <div style="background:var(--warn-light);border:1px solid #FCD34D;border-radius:8px;padding:10px 12px;font-size:11px;color:var(--warn);margin-bottom:12px;display:flex;gap:8px">
+          <span>⚠</span><span>1件のメニューが影響を受けています。「全メニュー原価率を再計算」で更新できます。</span>
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+          <div style="background:var(--warn);color:#fff;border-radius:6px;padding:5px 12px;font-size:11px;font-weight:700">全メニュー原価率を再計算</div>
+        </div>
+        <div class="mock-alert">
+          <div>
+            <div class="mock-alert-name">チョコレート</div>
+            <div class="mock-alert-detail">4.00円 → 4.45円（g） ／ ガトーショコラ で使用中</div>
+          </div>
+          <div style="text-align:right">
+            <div class="mock-alert-pct">+12%</div>
+            <div style="border:1px solid var(--border);border-radius:5px;padding:3px 8px;font-size:10px;color:var(--text2);margin-top:4px">📈 履歴を見る</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="warn-box"><span>⚠</span> +15%以上の場合は赤色で表示されます。早めに対応しましょう。</div>
+
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><div class="step-body"><div class="step-title">アラートを確認する</div><div class="step-desc">どの食材が何%値上がりしたか確認します</div></div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-body"><div class="step-title">「📈 履歴を見る」で推移を確認する</div><div class="step-desc">価格の推移グラフで傾向を把握します</div></div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-body"><div class="step-title">「全メニュー原価率を再計算」をクリック</div><div class="step-desc">最新の単価で全メニューの原価率が自動更新されます</div></div></div>
+      <div class="step"><div class="step-num">4</div><div class="step-body"><div class="step-title">悪化したメニューは販売価格を見直す</div><div class="step-desc">原価率が目標を超えたメニューの価格改定を検討します</div></div></div>
+    </div>
+  </div>
+
+  <!-- 7. CSV -->
+  <div class="section" id="csv">
+    <div class="section-header">
+      <div class="section-num">7</div>
+      <div class="section-title">CSVでデータをやり取りする</div>
+    </div>
+    <div class="section-divider"></div>
+
+    <div class="csv-card">
+      <div class="csv-card-title"><span style="font-size:16px">↓</span> メニューデータをエクスポートする</div>
+      <p style="font-size:13px;color:var(--text2)">サイドバーの「↓ CSVエクスポート」をクリックすると <b>原価率データ_日付.csv</b> がダウンロードされます。Googleスプレッドシートで月次集計に活用できます。</p>
+    </div>
+
+    <div class="csv-card">
+      <div class="csv-card-title"><span style="font-size:16px">↓</span> 食材内訳をエクスポートする</div>
+      <p style="font-size:13px;color:var(--text2)">メニュー登録画面の「↓ 食材内訳.csv」をクリック。他のメニュー登録時にインポートして再利用できます。</p>
+      <div class="csv-code">食材名,使用量,単位,単価<br>チョコレート,190,g,4.45<br>無塩バター,50,g,2.40</div>
+    </div>
+
+    <div class="csv-card">
+      <div class="csv-card-title"><span style="font-size:16px">📂</span> 食材内訳をインポートする</div>
+      <p style="font-size:13px;color:var(--text2)">メニュー登録画面の「📂 CSVインポート」からCSVファイルを選択して食材内訳を一括読み込みできます。</p>
+      <div class="csv-code">食材名,使用量,単位,単価<br>チョコレート,190,g,4.45<br>無塩バター,50,g,2.40</div>
+    </div>
+
+    <div class="csv-card">
+      <div class="csv-card-title"><span style="font-size:16px">◎</span> 食材マスタをエクスポート・インポートする</div>
+      <p style="font-size:13px;color:var(--text2)">食材マスタ画面の「↓ CSVエクスポート」「📂 CSVインポート」から操作できます。同名の食材はインポート時にスキップされます。</p>
+      <div class="csv-code">食材名,現在単価,単位,カテゴリ<br>チョコレート,4.45,g,乳製品<br>無塩バター,2.40,g,乳製品</div>
+    </div>
+    <div class="tip"><span>💡</span> 同名の食材はインポート時にスキップされます（上書きされません）。</div>
+  </div>
+
+  <!-- 8. 原価率の目安 -->
+  <div class="section" id="rate">
+    <div class="section-header">
+      <div class="section-num">8</div>
+      <div class="section-title">原価率の目安</div>
+    </div>
+    <div class="section-divider"></div>
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px">
+      <div class="rate-row">
+        <div class="rate-pct rate-good">〜30%</div>
+        <span class="badge good">優良</span>
+        <div class="rate-desc">利益率が高い状態。このまま維持しましょう。</div>
+      </div>
+      <div class="rate-row">
+        <div class="rate-pct rate-good">30〜35%</div>
+        <span class="badge good">目標内</span>
+        <div class="rate-desc">飲食店として理想的な状態です。</div>
+      </div>
+      <div class="rate-row">
+        <div class="rate-pct rate-warn">35〜40%</div>
+        <span class="badge warn">やや高め</span>
+        <div class="rate-desc">食材・仕入れの見直しを検討してください。</div>
+      </div>
+      <div class="rate-row" style="border-bottom:none">
+        <div class="rate-pct rate-bad">40%〜</div>
+        <span class="badge bad">要改善</span>
+        <div class="rate-desc">販売価格の引き上げを早急に検討してください。</div>
+      </div>
+    </div>
+
+    <p style="font-weight:700;margin-bottom:10px">原価率が高くなった場合のチェックリスト</p>
+    <div class="checklist" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px">
+      <div class="check-item"><div class="check-box"></div><div>食材の仕入れ価格が上がっていないか</div></div>
+      <div class="check-item"><div class="check-box"></div><div>使用量が増えていないか（ロスが出ていないか）</div></div>
+      <div class="check-item"><div class="check-box"></div><div>販売価格が適正かどうか</div></div>
+      <div class="check-item"><div class="check-box"></div><div style="border-bottom:none">代替食材に変更できないか</div></div>
+    </div>
+
+    <div style="margin-top:32px;border-top:2px solid var(--accent);padding-top:20px">
+      <p style="font-weight:700;font-size:15px;margin-bottom:8px">📌 困ったときは</p>
+      <p style="font-size:13px;color:var(--text2)">データはGoogleスプレッドシートに自動保存されています。左下の「● 同期済み」が「同期エラー」になっている場合は、設定画面でGAS URLを再入力してください。</p>
+    </div>
+  </div>
+
+</div><!-- /main -->
+</div><!-- /layout -->
+
+<script>
+// ナビのアクティブ状態をスクロールに合わせて更新
+const sections = document.querySelectorAll('.section');
+const navItems = document.querySelectorAll('.nav-item[href^="#"]');
+window.addEventListener('scroll', () => {
+  let current = '';
+  sections.forEach(s => {
+    if(window.scrollY >= s.offsetTop - 80) current = s.id;
+  });
+  navItems.forEach(a => {
+    a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+  });
+});
+</script>
+</body>
+</html>
