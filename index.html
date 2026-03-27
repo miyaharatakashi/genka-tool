@@ -249,9 +249,15 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:var(--surface2);}
         </div>
       </div>
       <div class="card" style="padding:0;overflow:hidden">
-        <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+        <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
           <span style="font-size:13px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em">登録済み食材</span>
-          <span id="master-total" style="font-size:12px;color:var(--text3)">0件</span>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span id="master-total" style="font-size:12px;color:var(--text3)">0件</span>
+            <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0">
+              📂 CSVインポート
+              <input type="file" id="master-csv-input" accept=".csv" style="display:none" onchange="importMasterCSV(this)">
+            </label>
+          </div>
         </div>
         <div class="table-wrap"><table><thead><tr><th>食材名</th><th>現在単価</th><th>単位</th><th>カテゴリ</th><th>前回比</th><th>使用状況</th><th></th></tr></thead><tbody id="master-tbody"></tbody></table></div>
         <div class="empty" id="master-empty"><div class="empty-icon">🥦</div><div class="empty-text">まだ食材が登録されていません</div></div>
@@ -927,6 +933,47 @@ function importCSV(input){
   };
   reader.readAsText(file, 'UTF-8');
 }
+// ── Master CSV Import ────────────────────────
+function importMasterCSV(input){
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const text = ev.target.result.replace(/^﻿/, '');
+    const lines = text.split('\n').map(l => l.replace(/\r$/, '')).filter(l => l.trim());
+    if(lines.length < 2){ toast('CSVにデータがありません'); return; }
+    // ヘッダー行をスキップ
+    const rows = lines.slice(1);
+    let added = 0, skipped = 0;
+    const today = new Date().toISOString().slice(0,10);
+    const promises = rows.map(line => {
+      const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+      const name  = cols[0] || '';
+      const price = parseFloat(cols[1]) || 0;
+      const unit  = cols[2] || 'g';
+      const cat   = cols[3] || 'その他';
+      if(!name || !price) return Promise.resolve();
+      if(master.find(m => m.name === name)){ skipped++; return Promise.resolve(); }
+      const item = {id: Date.now() + Math.random(), name, price, unit, cat, priceHistory:[{date:today, price}]};
+      master.push(item);
+      added++;
+      return gasPost({action:'saveMaster', item});
+    });
+    showLoading('食材マスタをインポート中...');
+    Promise.all(promises).then(() => {
+      localStorage.setItem('genka_master', JSON.stringify(master));
+      setSyncStatus('ok');
+      renderMaster(); refreshMasterUI(); updateAlertBadge();
+      toast(`${added}件追加、${skipped}件スキップしました`);
+      input.value = '';
+    }).catch(e => {
+      setSyncStatus('error');
+      toast('インポートエラー: ' + e.message);
+    }).finally(() => hideLoading());
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
 // ── Toast ─────────────────────────────────
 let tt;
 function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>el.classList.remove('show'),2800);}
