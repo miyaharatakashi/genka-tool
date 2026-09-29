@@ -80,6 +80,13 @@ td{padding:11px 12px;border-bottom:1px solid var(--border);vertical-align:middle
 tr:last-child td{border-bottom:none;}tr:hover td{background:var(--surface2);}
 .action-btn{background:none;border:none;cursor:pointer;color:var(--text2);font-size:13px;padding:4px 6px;border-radius:5px;}
 .action-btn:hover{background:var(--surface2);color:var(--text);}
+th.sortable{cursor:pointer;user-select:none;white-space:nowrap;}
+th.sortable:hover{background:var(--border);color:var(--text);}
+.sort-ind{font-size:9px;margin-left:4px;color:var(--text3);}
+th.sortable.sorted{color:var(--text);}
+th.sortable.sorted .sort-ind{color:var(--accent);}
+.list-tools{display:flex;align-items:center;gap:8px;padding:14px 20px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.list-tools select,.list-tools input{width:auto;min-width:140px;padding:7px 10px;font-size:13px;}
 .chart-bars{display:flex;align-items:flex-end;gap:8px;height:140px;padding:0 4px;}
 .chart-bar-group{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;}
 .chart-bar{width:100%;border-radius:4px 4px 0 0;min-height:2px;}
@@ -119,8 +126,8 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:var(--surface2);}
 <div class="app">
   <div class="sidebar">
     <div class="sidebar-logo">🍽 原価管理</div>
-    <div class="nav-item" onclick="showTab('register')" data-tab="register"><span class="nav-icon">＋</span> メニュー登録</div>
     <div class="nav-item" onclick="showTab('list')" data-tab="list"><span class="nav-icon">≡</span> メニュー一覧</div>
+    <div class="nav-item" onclick="showTab('register')" data-tab="register"><span class="nav-icon">＋</span> メニュー登録</div>
     <div class="nav-item" onclick="showTab('master')" data-tab="master"><span class="nav-icon">◎</span> 食材マスタ</div>
     <div class="nav-item" onclick="showTab('alerts')" data-tab="alerts"><span class="nav-icon">⚠</span> 値上がりアラート<span class="nav-badge" id="alert-nav-badge" style="display:none">0</span></div>
     <div class="nav-item" onclick="showTab('report')" data-tab="report"><span class="nav-icon">↗</span> 月次レポート</div>
@@ -227,7 +234,22 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:var(--surface2);}
         </div>
       </div>
       <div class="card" style="padding:0;overflow:hidden">
-        <div class="table-wrap"><table><thead><tr><th>メニュー名</th><th>カテゴリ</th><th>販売価格</th><th>食材原価</th><th>原価率</th><th>粗利</th><th>対象月</th><th>メモ</th><th></th></tr></thead><tbody id="menu-tbody"></tbody></table></div>
+        <div class="list-tools">
+          <span style="font-size:12px;color:var(--text2)">絞り込み</span>
+          <select id="list-cat-filter" onchange="renderList()"><option value="">カテゴリ：すべて</option></select>
+          <input type="text" id="list-search" placeholder="メニュー名で検索" oninput="renderList()">
+          <span style="font-size:11px;color:var(--text3);margin-left:auto">見出しをクリックで並べ替え</span>
+        </div>
+        <div class="table-wrap"><table><thead><tr>
+          <th class="sortable" data-sort="name" onclick="sortList('name')">メニュー名<span class="sort-ind"></span></th>
+          <th class="sortable" data-sort="cat" onclick="sortList('cat')">カテゴリ<span class="sort-ind"></span></th>
+          <th class="sortable" data-sort="price" onclick="sortList('price')">販売価格<span class="sort-ind"></span></th>
+          <th class="sortable" data-sort="cost" onclick="sortList('cost')">食材原価<span class="sort-ind"></span></th>
+          <th class="sortable" data-sort="rate" onclick="sortList('rate')">原価率<span class="sort-ind"></span></th>
+          <th class="sortable" data-sort="profit" onclick="sortList('profit')">粗利<span class="sort-ind"></span></th>
+          <th class="sortable" data-sort="month" onclick="sortList('month')">対象月<span class="sort-ind"></span></th>
+          <th>メモ</th><th></th>
+        </tr></thead><tbody id="menu-tbody"></tbody></table></div>
         <div class="empty" id="list-empty"><div class="empty-icon">📋</div><div class="empty-text">まだメニューが登録されていません</div></div>
       </div>
     </div>
@@ -334,7 +356,7 @@ window.onload = async () => {
   document.getElementById('menu-month').value = new Date().toISOString().slice(0,7);
   if(GAS_URL){
     document.getElementById('gas-url-input').value = GAS_URL;
-    showTab('register');
+    showTab('list');
     initIngRows();
     await loadAll();
   } else {
@@ -600,27 +622,101 @@ async function saveMenu(){
     await gasPost({action:'saveMenu',menu});
     if(editId){menus=menus.map(m=>m.id===editId?menu:m);editId=null;}else menus.push(menu);
     localStorage.setItem('genka_menus',JSON.stringify(menus));
-    setSyncStatus('ok'); toast('「'+name+'」を保存しました'); clearForm();
+    setSyncStatus('ok'); toast('「'+name+'」を保存しました'); clearForm(); showTab('list');
   }catch(e){setSyncStatus('error');toast('保存エラー: '+e.message);}
   finally{hideLoading();}
 }
 
+let listSort = {key:'name', dir:1};
+const LIST_SORT_LABEL = {name:'メニュー名',cat:'カテゴリ',price:'販売価格',cost:'食材原価',rate:'原価率',profit:'粗利',month:'対象月'};
+
+function sortList(key){
+  if(listSort.key===key) listSort.dir = -listSort.dir;
+  else listSort = {key, dir:(key==='name'||key==='cat')?1:-1};
+  renderList();
+}
+
+function sortKeyValue(m,k){
+  switch(k){
+    case 'name':  return m.name||'';
+    case 'cat':   return m.cat||'';
+    case 'month': return m.month||'';
+    case 'price': return Number(m.price)||0;
+    case 'cost':  return Number(m.cost)||0;
+    case 'rate':  return Number(m.rate)||0;
+    case 'profit':return (Number(m.price)||0)-(Number(m.cost)||0);
+    default:      return '';
+  }
+}
+
+function visibleMenus(){
+  const catEl=document.getElementById('list-cat-filter');
+  const qEl=document.getElementById('list-search');
+  const cat=catEl?catEl.value:'';
+  const q=qEl?qEl.value.trim().toLowerCase():'';
+  let arr=menus.filter(m=>{
+    if(cat && (m.cat||'')!==cat) return false;
+    if(q && !String(m.name||'').toLowerCase().includes(q)) return false;
+    return true;
+  });
+  const k=listSort.key;
+  if(k){
+    arr.sort((a,b)=>{
+      const x=sortKeyValue(a,k), y=sortKeyValue(b,k);
+      let c;
+      if(typeof x==='number' && typeof y==='number') c = x-y;
+      else c = String(x).localeCompare(String(y),'ja');
+      if(c===0) c = String(a.name||'').localeCompare(String(b.name||''),'ja');
+      return c*listSort.dir;
+    });
+  }
+  return arr;
+}
+
+function refreshCatFilter(){
+  const sel=document.getElementById('list-cat-filter'); if(!sel) return;
+  const cur=sel.value;
+  const cats=[...new Set(menus.map(m=>m.cat).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),'ja'));
+  sel.innerHTML='<option value="">カテゴリ：すべて</option>'+cats.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
+  sel.value=cats.includes(cur)?cur:'';
+}
+
+function updateSortIndicators(){
+  document.querySelectorAll('th.sortable').forEach(th=>{
+    const on = th.dataset.sort===listSort.key;
+    th.classList.toggle('sorted',on);
+    th.querySelector('.sort-ind').textContent = on ? (listSort.dir===1?'▲':'▼') : '';
+  });
+}
+
 function renderList(){
   const tb=document.getElementById('menu-tbody'),em=document.getElementById('list-empty');
-  document.getElementById('list-count').textContent='登録済みメニュー数: '+menus.length+'件';
-  if(!menus.length){tb.innerHTML='';em.style.display='';return;}
+  refreshCatFilter();
+  updateSortIndicators();
+  const rows=visibleMenus();
+  const label=LIST_SORT_LABEL[listSort.key]||'';
+  const suffix=label?' ／ 並べ替え: '+label+(listSort.dir===1?'（昇順）':'（降順）'):'';
+  document.getElementById('list-count').textContent =
+    rows.length===menus.length
+      ? '登録済みメニュー数: '+menus.length+'件'+suffix
+      : '表示 '+rows.length+'件 / 全'+menus.length+'件'+suffix;
+  if(!rows.length){
+    tb.innerHTML='';
+    em.style.display='';
+    em.querySelector('.empty-text').textContent = menus.length ? '条件に合うメニューがありません' : 'まだメニューが登録されていません';
+    return;
+  }
   em.style.display='none';
-  tb.innerHTML=menus.map(m=>{
+  tb.innerHTML=rows.map(m=>{
     const cls=m.rate<=35?'good':m.rate<=40?'warn':'bad';
     return `<tr>
-      <td style="font-weight:500">${esc(m.name)}</td><td>${m.cat}</td>
+      <td style="font-weight:500">${esc(m.name)}</td><td>${esc(m.cat)}</td>
       <td style="font-family:var(--mono)">${Number(m.price).toLocaleString()}円</td>
       <td style="font-family:var(--mono)">${fmt(m.cost)}円</td>
       <td><span class="badge ${cls}">${fmtPct(m.rate)}</span></td>
       <td style="font-family:var(--mono)">${fmt(m.price-m.cost)}円</td>
-      <td style="color:var(--text3)">${m.month||'—'}</td>
-      <td style="color:var(--text2);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.memo||''}</td>
-      <td style="color:var(--text3);font-size:12px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.memo||'—'}</td>
+      <td style="color:var(--text3)">${esc(m.month)||'—'}</td>
+      <td style="color:var(--text2);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.memo)||'—'}</td>
       <td style="white-space:nowrap">
         <button class="action-btn" onclick="editMenu(${m.id})">✏</button>
         <button class="action-btn" onclick="deleteMenu(${m.id})" style="color:var(--danger)">🗑</button>
@@ -859,7 +955,7 @@ async function saveGasUrl(){
   if(!url.startsWith('https://script.google.com')){showConnectionStatus('error','正しいGAS URLを入力してください');return;}
   GAS_URL=url;localStorage.setItem('genka_gas_url',GAS_URL);
   showConnectionStatus('loading','接続確認中...');
-  try{await loadAll();showConnectionStatus('ok','接続成功！データを読み込みました');toast('Googleスプレッドシートに接続しました');showTab('register');}
+  try{await loadAll();showConnectionStatus('ok','接続成功！データを読み込みました');toast('Googleスプレッドシートに接続しました');showTab('list');}
   catch(e){showConnectionStatus('error','接続失敗: '+e.message);}
 }
 function showConnectionStatus(type,msg){
