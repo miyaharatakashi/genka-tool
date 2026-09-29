@@ -87,6 +87,12 @@ th.sortable.sorted{color:var(--text);}
 th.sortable.sorted .sort-ind{color:var(--accent);}
 .list-tools{display:flex;align-items:center;gap:8px;padding:14px 20px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
 .list-tools select,.list-tools input{width:auto;min-width:140px;padding:7px 10px;font-size:13px;}
+.newing-row{display:grid;grid-template-columns:22px 1fr 90px 64px 110px;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);}
+.newing-row:last-of-type{border-bottom:none;}
+.newing-row input,.newing-row select{padding:7px 9px;font-size:13px;}
+.newing-head{display:grid;grid-template-columns:22px 1fr 90px 64px 110px;gap:8px;padding-bottom:4px;}
+.newing-row input[type=checkbox]{width:16px;height:16px;cursor:pointer;}
+@media(max-width:560px){.newing-row,.newing-head{grid-template-columns:22px 1fr;}.newing-head span:nth-child(n+3){display:none;}}
 .chart-bars{display:flex;align-items:flex-end;gap:8px;height:140px;padding:0 4px;}
 .chart-bar-group{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;}
 .chart-bar{width:100%;border-radius:4px 4px 0 0;min-height:2px;}
@@ -327,6 +333,27 @@ th.sortable.sorted .sort-ind{color:var(--accent);}
   </div>
 </div>
 
+<!-- 新規食材のマスタ登録確認モーダル -->
+<div class="modal-bg" id="newing-modal" style="display:none" onclick="if(event.target===this)closeNewIngModal()">
+  <div class="modal">
+    <button class="modal-close" onclick="closeNewIngModal()">×</button>
+    <div class="modal-title">食材マスタに追加しますか？</div>
+    <div class="modal-sub" id="newing-sub"></div>
+    <div class="newing-head">
+      <span></span>
+      <span class="form-label">食材名</span>
+      <span class="form-label">単価（円）</span>
+      <span class="form-label">単位</span>
+      <span class="form-label">カテゴリ</span>
+    </div>
+    <div id="newing-list"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:20px">
+      <button class="btn btn-outline" onclick="closeNewIngModal()">追加しない</button>
+      <button class="btn btn-primary" onclick="addSelectedNewIngs()">選択した食材を追加</button>
+    </div>
+  </div>
+</div>
+
 <!-- Autocomplete dropdown (body直下・DOM干渉なし) -->
 <div class="ac-dropdown" id="ac-dropdown"></div>
 
@@ -399,6 +426,23 @@ function initIngRows(ings){
   }
 }
 
+// 行がマスタ由来かを判定して緑マークを付け外しする
+function syncMasterMark(row){
+  const inpName = row.querySelector('.ing-name');
+  const inpPrice = row.querySelector('.ing-price');
+  const name = inpName.value.trim();
+  const item = name ? master.find(m => String(m.name||'').trim().toLowerCase() === name.toLowerCase()) : null;
+  const price = parseFloat(inpPrice.value);
+  const match = !!item && !isNaN(price) && Math.abs(curPrice(item) - price) < 0.005;
+  inpName.classList.toggle('ing-from-master', match);
+  inpName.title = match ? '食材マスタの単価と一致しています' :
+                  item  ? '食材マスタに登録されていますが、単価が違います（マスタ: '+fmt(curPrice(item))+'円/'+item.unit+'）' :
+                          '';
+}
+function refreshAllMasterMarks(){
+  document.querySelectorAll('#ing-list .ingredient-row').forEach(syncMasterMark);
+}
+
 function addIngRow(name='', price='', unit='', amount='', fromMaster=false){
   const list = document.getElementById('ing-list');
   const row = document.createElement('div');
@@ -416,7 +460,6 @@ function addIngRow(name='', price='', unit='', amount='', fromMaster=false){
   inpName.className = 'ing-name';
   inpName.placeholder = '食材名（入力で候補表示）';
   inpName.value = name;
-  if(fromMaster) inpName.classList.add('ing-from-master');
 
   // 単価
   const inpPrice = document.createElement('input');
@@ -468,6 +511,12 @@ function addIngRow(name='', price='', unit='', amount='', fromMaster=false){
   }
   inpPrice.addEventListener('input', updateCost);
   inpAmount.addEventListener('input', updateCost);
+
+  // マスタ由来マーク（緑）の同期：名前・単価がマスタと一致するときだけ点く
+  inpName.addEventListener('input', () => syncMasterMark(row));
+  inpPrice.addEventListener('input', () => syncMasterMark(row));
+  inpUnit.addEventListener('input', () => syncMasterMark(row));
+  syncMasterMark(row);
 
   // 初期値がある場合は原価を表示
   if(price && amount) updateCost();
@@ -533,9 +582,9 @@ function showAC(input, row){
       e.preventDefault();
       const r = acTargetRow;
       r.querySelector('.ing-name').value  = item.dataset.name;
-      r.querySelector('.ing-name').classList.add('ing-from-master');
       r.querySelector('.ing-price').value = item.dataset.price;
       r.querySelector('.ing-unit').value  = item.dataset.unit;
+      syncMasterMark(r);
       const p = parseFloat(item.dataset.price)||0;
       const a = parseFloat(r.querySelector('.ing-amount').value)||0;
       r.querySelector('.ing-cost-cell').textContent = (p&&a) ? fmt(p*a)+'円' : '—';
@@ -622,7 +671,10 @@ async function saveMenu(){
     await gasPost({action:'saveMenu',menu});
     if(editId){menus=menus.map(m=>m.id===editId?menu:m);editId=null;}else menus.push(menu);
     localStorage.setItem('genka_menus',JSON.stringify(menus));
-    setSyncStatus('ok'); toast('「'+name+'」を保存しました'); clearForm(); showTab('list');
+    setSyncStatus('ok'); toast('「'+name+'」を保存しました');
+    const newIngs = findUnregisteredIngs(ings);
+    clearForm(); showTab('list');
+    if(newIngs.length) openNewIngModal(newIngs);
   }catch(e){setSyncStatus('error');toast('保存エラー: '+e.message);}
   finally{hideLoading();}
 }
@@ -748,6 +800,79 @@ async function deleteMenu(id){
   finally{hideLoading();}
 }
 
+// ── 新規食材のマスタ登録 ───────────────────
+const MASTER_CATS = ['肉・魚','野菜','乳製品','調味料','穀物・粉','ドリンク','その他'];
+let newIngCandidates = [];
+
+function normName(n){return String(n||'').trim().toLowerCase();}
+function inMaster(name){const k=normName(name);return master.some(m=>normName(m.name)===k);}
+
+function findUnregisteredIngs(ings){
+  const seen = new Set(), out = [];
+  (ings||[]).forEach(i => {
+    const nm = String(i.name||'').trim();
+    const k = normName(nm);
+    if(!nm || !i.price) return;
+    if(seen.has(k) || inMaster(nm)) return;
+    seen.add(k);
+    out.push({name:nm, price:parseFloat(i.price)||0, unit:(i.unit||'').trim()});
+  });
+  return out;
+}
+
+function openNewIngModal(list){
+  newIngCandidates = list;
+  document.getElementById('newing-sub').textContent =
+    '食材マスタに未登録の食材が'+list.length+'件あります。登録しておくと次回から自動補完・値上がりアラートの対象になります。';
+  document.getElementById('newing-list').innerHTML = list.map((i,idx) => `
+    <div class="newing-row">
+      <input type="checkbox" class="newing-check" data-idx="${idx}" checked>
+      <input type="text" class="newing-name" value="${esc(i.name)}">
+      <input type="number" class="newing-price" value="${i.price}" step="0.01">
+      <input type="text" class="newing-unit" value="${esc(i.unit)}" placeholder="g">
+      <select class="newing-cat">${MASTER_CATS.map(c=>`<option${c==='その他'?' selected':''}>${c}</option>`).join('')}</select>
+    </div>`).join('');
+  document.getElementById('newing-modal').style.display = 'flex';
+}
+
+function closeNewIngModal(){
+  document.getElementById('newing-modal').style.display='none';
+  newIngCandidates = [];
+}
+
+async function addSelectedNewIngs(){
+  const rows = [...document.querySelectorAll('#newing-list .newing-row')].filter(r => r.querySelector('.newing-check').checked);
+  if(!rows.length){closeNewIngModal();return;}
+  const today = new Date().toISOString().slice(0,10);
+  const items = [], skipped = [];
+  rows.forEach(r => {
+    const name = r.querySelector('.newing-name').value.trim();
+    const price = parseFloat(r.querySelector('.newing-price').value)||0;
+    const unit = r.querySelector('.newing-unit').value.trim();
+    const cat = r.querySelector('.newing-cat').value;
+    if(!name || !price){skipped.push(name||'(名称なし)');return;}
+    if(inMaster(name) || items.some(x=>normName(x.name)===normName(name))){skipped.push(name);return;}
+    items.push({id:Date.now()+items.length, name, price, unit, cat, priceHistory:[{date:today, price}]});
+  });
+  if(!items.length){toast('追加できる食材がありませんでした');closeNewIngModal();return;}
+  showLoading('食材マスタに追加中...');
+  let ok = 0, fail = 0;
+  for(const item of items){
+    try{
+      await gasPost({action:'saveMaster', item});
+      master.push(item); ok++;
+    }catch(e){ fail++; }
+  }
+  localStorage.setItem('genka_master', JSON.stringify(master));
+  setSyncStatus(fail?'error':'ok');
+  refreshMasterUI(); renderMaster(); updateAlertBadge();
+  hideLoading(); closeNewIngModal();
+  let msg = ok+'件を食材マスタに追加しました';
+  if(skipped.length) msg += '（'+skipped.length+'件はスキップ）';
+  if(fail) msg += ' / '+fail+'件は保存エラー';
+  toast(msg);
+}
+
 // ── Master ──────────────────────────────
 function curPrice(m){return m.priceHistory&&m.priceHistory.length?m.priceHistory[m.priceHistory.length-1].price:m.price;}
 function prevPrice(m){return m.priceHistory&&m.priceHistory.length>=2?m.priceHistory[m.priceHistory.length-2].price:null;}
@@ -815,6 +940,7 @@ async function deleteMaster(id){
 }
 
 function refreshMasterUI(){
+  refreshAllMasterMarks();
   const tip=document.getElementById('master-tip'),badge=document.getElementById('master-badge');
   if(master.length>0){tip.style.display='flex';badge.style.display='';badge.textContent='食材マスタ '+master.length+'件';}
   else{tip.style.display='none';badge.style.display='none';}
@@ -846,7 +972,7 @@ async function updatePriceFromModal(){
     if(last&&last.date===today)last.price=newPrice;else m.priceHistory.push({date:today,price:newPrice});
     m.price=newPrice;
     localStorage.setItem('genka_master',JSON.stringify(master));
-    setSyncStatus('ok');renderMaster();renderAlerts();updateAlertBadge();
+    setSyncStatus('ok');renderMaster();renderAlerts();updateAlertBadge();refreshAllMasterMarks();
     renderModalChart(m);renderModalHistory(m);
     toast(`「${m.name}」の単価を${newPrice}円に更新しました`);
   }catch(e){setSyncStatus('error');toast('更新エラー: '+e.message);}
